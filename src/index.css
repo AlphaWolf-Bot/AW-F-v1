@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-text font-sans min-h-screen;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-secondary rounded-lg border border-gray-700 overflow-hidden transition-all duration-300;
+  }
+
+  .card:hover {
+    @apply -translate-y-1 shadow-lg shadow-primary/30;
+  }
+
+  .task-btn, .withdraw-btn, .game-btn {
+    @apply bg-primary text-black font-bold py-2 px-4 rounded cursor-pointer transition-all duration-300;
+  }
+
+  .task-btn:hover, .withdraw-btn:hover, .game-btn:hover {
+    @apply bg-accent text-text;
+  }
+
+  .nav-btn {
+    @apply bg-secondary text-text transition-all duration-300;
+  }
+
+  .nav-btn:hover, .nav-btn.active {
+    @apply bg-primary text-secondary;
+  }
+
+  .disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  .disabled:hover {
+    @apply bg-primary transform-none;
+  }
+
+  /* Switch styles */
+  .switch {
+    @apply relative inline-block w-12 h-6;
+  }
+
+  .switch input {
+    @apply opacity-0 w-0 h-0;
+  }
+
+  .slider {
+    @apply absolute cursor-pointer top-0 left-0 right-0 bottom-0 bg-gray-700 transition-all duration-300;
+  }
+
+  .slider:before {
+    @apply absolute h-5 w-5 left-0.5 bottom-0.5 bg-white transition-all duration-300;
+    content: "";
+  }
+
+  input:checked + .slider {
+    @apply bg-primary;
+  }
+
+  input:checked + .slider:before {
+    @apply translate-x-6;
+  }
+
+  .slider.round {
+    @apply rounded-full;
+  }
+
+  .slider.round:before {
+    @apply rounded-full;
+  }
+} 
