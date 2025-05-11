@@ -1,72 +1,43 @@
 import { create } from 'zustand';
 
 interface UserState {
+  id: string;
+  username: string;
   coinBalance: number;
+  level: number;
+  userLevel: number;
   tapsRemaining: number;
-  tapRefreshTime: number;
-  userLevel: {
-    current: string;
-    points: number;
-    maxPoints: number;
-    levels: string[];
-  };
-  initTelegramWebApp: () => void;
+  tapRefreshTime: string | null;
+  friends: Array<{
+    id: string;
+    username: string;
+    level: number;
+    joinedDate: string;
+    coins: number;
+  }>;
+  setUser: (user: Partial<UserState>) => void;
   updateCoinBalance: (amount: number) => void;
-  updateLevel: (points: number) => void;
+  updateLevel: (level: number) => void;
   resetTaps: () => void;
+  initTelegramWebApp: () => void;
 }
 
 export const useStore = create<UserState>((set) => ({
+  id: '',
+  username: '',
   coinBalance: 0,
-  tapsRemaining: 100,
-  tapRefreshTime: 14400, // 4 hours in seconds
-  userLevel: {
-    current: 'Alpha Pup',
-    points: 0,
-    maxPoints: 1000,
-    levels: [
-      'Alpha Pup',
-      'Alpha Scout',
-      'Alpha Hunter',
-      'Alpha Warrior',
-      'Alpha Leader'
-    ]
-  },
-
+  level: 1,
+  userLevel: 1,
+  tapsRemaining: 0,
+  tapRefreshTime: null,
+  friends: [],
+  setUser: (user) => set((state) => ({ ...state, ...user })),
+  updateCoinBalance: (amount) => set((state) => ({ coinBalance: state.coinBalance + amount })),
+  updateLevel: (level) => set(() => ({ level, userLevel: level })),
+  resetTaps: () => set({ tapsRemaining: 100, tapRefreshTime: new Date().toISOString() }),
   initTelegramWebApp: () => {
-    console.log('Initializing Telegram WebApp');
-    // Add any initialization logic here
-  },
-
-  updateCoinBalance: (amount) => set((state) => ({
-    coinBalance: state.coinBalance + amount
-  })),
-
-  updateLevel: (points) => set((state) => {
-    const newPoints = state.userLevel.points + points;
-    const currentLevelIndex = state.userLevel.levels.indexOf(state.userLevel.current);
-    
-    if (newPoints >= state.userLevel.maxPoints && currentLevelIndex < state.userLevel.levels.length - 1) {
-      return {
-        userLevel: {
-          ...state.userLevel,
-          current: state.userLevel.levels[currentLevelIndex + 1],
-          points: newPoints - state.userLevel.maxPoints,
-          maxPoints: state.userLevel.maxPoints * 1.5
-        }
-      };
+    if (window.Telegram?.WebApp) {
+      window.Telegram.WebApp.ready();
     }
-
-    return {
-      userLevel: {
-        ...state.userLevel,
-        points: newPoints
-      }
-    };
-  }),
-
-  resetTaps: () => set({
-    tapsRemaining: 100,
-    tapRefreshTime: 14400
-  })
+  },
 })); 

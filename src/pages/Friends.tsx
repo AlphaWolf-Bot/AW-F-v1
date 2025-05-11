@@ -2,28 +2,7 @@ import { motion } from 'framer-motion';
 import { useStore } from '../store';
 
 const Friends = () => {
-  const { coinBalance } = useStore();
-
-  const friends = [
-    {
-      name: 'John Doe',
-      level: 'Alpha Scout',
-      joinedDate: '2024-02-15',
-      coins: 2500
-    },
-    {
-      name: 'Jane Smith',
-      level: 'Alpha Pup',
-      joinedDate: '2024-02-18',
-      coins: 1200
-    },
-    {
-      name: 'Mike Johnson',
-      level: 'Alpha Hunter',
-      joinedDate: '2024-02-10',
-      coins: 5000
-    }
-  ];
+  const { friends } = useStore();
 
   const referralCode = 'ALPHA123';
 
@@ -57,7 +36,7 @@ const Friends = () => {
         <h3 className="text-lg font-bold">Your Friends</h3>
         {friends.map((friend, index) => (
           <motion.div
-            key={friend.name}
+            key={friend.id}
             className="card p-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -65,7 +44,7 @@ const Friends = () => {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold">{friend.name}</h4>
+                <h4 className="font-bold">{friend.username}</h4>
                 <p className="text-sm text-gray-400">
                   Level: {friend.level} • Joined: {friend.joinedDate}
                 </p>

@@ -1,41 +1,19 @@
-import { ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Outlet } from 'react-router-dom';
 import Header from './Header';
-import Navigation from './Navigation';
+import Footer from './Footer';
 
 interface MainLayoutProps {
-  children: ReactNode;
+  children?: React.ReactNode;
 }
 
-const MainLayout = ({ children }: MainLayoutProps) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-
+const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-[#0f0f0f] text-[#e0e0e0] pb-20">
-      {/* Wolf background icon */}
-      <div className="wolf-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" className="w-full h-full opacity-5">
-          <path fill="currentColor" d="M267.73 471.53l10.56 15.84 5.28-12.32 5.28 7.04 5.28-5.28 5.28 10.56 15.84-15.84-10.56 31.67 21.11 15.84-31.67 5.28V512l-15.84-10.56-15.84 10.56v-15.84l-31.67-5.28 21.11-15.84-10.56-31.67 15.84 15.84 5.28-10.56 5.28 5.28 5.28-7.04 5.28 12.32 10.56-15.84zm73.9-36.9a22.8 22.8 0 0 1 5.72 19.2l-50.06-50.14a55.32 55.32 0 0 1-37.35-4.23l-53.8 26.54a64.07 64.07 0 0 1-28.6 6.28l-24 43.03V512H116.7l18.57-24h-51.61l13.44-27.14 18.54-30.86L99.09 398.4l-18-27.11 48.57-23.25 1.22 26 29.54-5a55.53 55.53 0 0 1 38.29 7.37l50.37-25.78a22.71 22.71 0 0 1 21.77 3.75l20.79 20.78zM245.2 244.81c-7.18 4.15-14.3 6.86-18.31 6.86a11.6 11.6 0 0 1-5.45-1.2c-4.49-2.16-10.93-8.42-13.5-14.5l-1.32-3.12-20.22-47-8.28 8.29-14.8 14.8c-2.81 2.81-24.62 24.61-37.37 37.36-1.49 1.49-4.32 4.31-7.28 7.23-18.45-5.68-40.82-22.64-44.32-27L96 256v-78l16-16-16-16L8.8 177.47a378.81 378.81 0 0 0 51.77 99.79l105 144.7h85.87l98.85-98.85c11.8-13.33 24.63-27.35 33.21-36.11l-48.16-48.16-9.54 8.83-45.6-26.86zm-18.51-117a148.53 148.53 0 0 0 14.77-17.41 41.76 41.76 0 0 0-12.83-7l-21.21-8.88-22.8 8.88a41.76 41.76 0 0 0-12.83 7 148.53 148.53 0 0 0 14.77 17.41 168.83 168.83 0 0 0 40.13 0zm185.88 117.1c7.3-2.39 14.63-7.17 21.94-13.57l-92.25-71.78 3.45-2.3v-14.24l22.67-18.86 8.25-6.89-15.43-10.29-7.31-4.87-42-28-42 28-7.31 4.87-15.41 10.28 8.25 6.89 22.67 18.87v14.24l3.45 2.3-92.25 71.78c7.3 6.4 14.63 11.17 21.94 13.57v-18.46a28.16 28.16 0 0 1 13-23.67l25.1-17.81 19.7-14.53 8.84 5.89 8.84-5.89 19.7 14.53 25.07 17.86a28.12 28.12 0 0 1 12.99 23.66v18.41zm28.91-189.79L415.92 28.24A24.39 24.39 0 0 0 398.83 16h-48.64a24.39 24.39 0 0 0-17.09 12.24L300 72.12 256 56 212 72.12 178.9 28.24A24.39 24.39 0 0 0 161.81 16h-48.64a24.39 24.39 0 0 0-17.09 12.24L72.53 72.12c-16.93 0-33.33 6.61-45.95 18.64L94.91 128H160l16 16 5.41-5.41L208 166.2v16.44l26.15 20.89L275.28 162a148.69 148.69 0 0 0 18.76-22q2.91.16 5.78.42V160h80l16-16h65.07l68.31-37.24c-12.58-12.07-28.98-18.65-45.92-18.65z"/>
-        </svg>
-      </div>
-
-      <div className="container mx-auto px-4">
-        <Header />
-        
-        <motion.main
-          key={location.pathname}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
-        >
-          {children}
-        </motion.main>
-      </div>
-
-      <Navigation />
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow container mx-auto px-4 py-8">
+        {children || <Outlet />}
+      </main>
+      <Footer />
     </div>
   );
 };

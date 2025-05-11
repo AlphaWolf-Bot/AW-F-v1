@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -7,8 +7,8 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor to add auth token
-api.interceptors.request.use((config: AxiosRequestConfig) => {
+// Add request interceptor for authentication
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -16,12 +16,11 @@ api.interceptors.request.use((config: AxiosRequestConfig) => {
   return config;
 });
 
-// Add response interceptor to handle errors
+// Add response interceptor for error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
-  (error: AxiosError) => {
+  (response) => response,
+  (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
       localStorage.removeItem('token');
       window.location.href = '/login';
     }

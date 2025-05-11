@@ -18,10 +18,12 @@ const Home = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      if (tapRefreshTime > 0) {
-        // Update timer logic here
-      } else {
-        resetTaps();
+      if (tapRefreshTime) {
+        const now = new Date().getTime();
+        const refreshTime = new Date(tapRefreshTime).getTime();
+        if (now >= refreshTime) {
+          resetTaps();
+        }
       }
     }, 1000);
 
@@ -51,6 +53,20 @@ const Home = () => {
     }, 1000);
   };
 
+  const formatTimeRemaining = () => {
+    if (!tapRefreshTime) return '00:00:00';
+    
+    const now = new Date().getTime();
+    const refreshTime = new Date(tapRefreshTime).getTime();
+    const timeLeft = Math.max(0, refreshTime - now);
+    
+    const hours = Math.floor(timeLeft / 3600000);
+    const minutes = Math.floor((timeLeft % 3600000) / 60000);
+    const seconds = Math.floor((timeLeft % 60000) / 1000);
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="flex flex-col items-center justify-center py-8">
       <LevelProgress />
@@ -60,11 +76,11 @@ const Home = () => {
         <p className="text-sm text-gray-400">
           Taps remaining: {tapsRemaining}/100
         </p>
-        <p className="text-sm text-gray-400">
-          Refreshes in: {Math.floor(tapRefreshTime / 3600)}:
-          {Math.floor((tapRefreshTime % 3600) / 60).toString().padStart(2, '0')}:
-          {(tapRefreshTime % 60).toString().padStart(2, '0')}
-        </p>
+        {tapsRemaining === 0 && (
+          <div className="text-center text-sm text-gray-400 mt-2">
+            Refreshes in: {formatTimeRemaining()}
+          </div>
+        )}
       </div>
       
       <motion.div

@@ -29,7 +29,7 @@ interface CoinsState {
   getTransactions: (page?: number, limit?: number) => Promise<void>;
 }
 
-export const useCoinsStore = create<CoinsState>((set, get) => ({
+export const useCoinsStore = create<CoinsState>((set) => ({
   balance: null,
   transactions: [],
   isLoading: false,

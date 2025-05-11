@@ -1,23 +1,25 @@
 import { useStore } from '../store';
 
 const LevelProgress = () => {
-  const { userLevel } = useStore();
-  const progress = (userLevel.points / userLevel.maxPoints) * 100;
+  const { level } = useStore();
+  const maxPoints = level * 100;
+  const currentPoints = level * 50; // Example: halfway to next level
+  const progress = (currentPoints / maxPoints) * 100;
 
   return (
-    <div className="my-4 w-full">
-      <div className="flex items-center justify-between mb-1">
-        <span>
-          Level: <span className="text-[#ffd700] font-bold">{userLevel.current}</span>
+    <div className="card p-4">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm">
+          Level: <span className="text-[#ffd700] font-bold">{level}</span>
         </span>
-        <span>
-          {userLevel.points}/{userLevel.maxPoints}
+        <span className="text-sm">
+          {currentPoints}/{maxPoints}
         </span>
       </div>
-      <div className="h-5 bg-[#1f1f1f] rounded-lg overflow-hidden">
-        <div 
-          className="h-full bg-[#ffd700] transition-all duration-300"
-          style={{ width: `${Math.min(progress, 100)}%` }}
+      <div className="w-full bg-gray-700 rounded-full h-2">
+        <div
+          className="bg-[#ffd700] h-2 rounded-full transition-all duration-300"
+          style={{ width: `${progress}%` }}
         />
       </div>
     </div>

@@ -17,7 +17,7 @@ interface WithdrawalsState {
   isLoading: boolean;
   error: string | null;
   getHistory: (page?: number, limit?: number) => Promise<void>;
-  create: (amount: number, upiId: string) => Promise<void>;
+  create: (amount: number, upiId: string) => Promise<boolean>;
 }
 
 export const useWithdrawalsStore = create<WithdrawalsState>((set, get) => ({
@@ -50,23 +50,12 @@ export const useWithdrawalsStore = create<WithdrawalsState>((set, get) => ({
 
   create: async (amount: number, upiId: string) => {
     try {
-      set({ isLoading: true, error: null });
-      const { data } = await withdrawalsAPI.create(amount, upiId) as {
-        data: {
-          success: boolean;
-          message: string;
-          withdrawalId: string;
-          coinBalance: number;
-        }
-      };
-      // Refresh withdrawal history
+      await withdrawalsAPI.create(amount, upiId);
       await get().getHistory();
-      set({ isLoading: false });
+      return true;
     } catch (error) {
-      set({ 
-        error: error instanceof Error ? error.message : 'Failed to create withdrawal', 
-        isLoading: false 
-      });
+      console.error('Error creating withdrawal:', error);
+      return false;
     }
   },
 })); 
