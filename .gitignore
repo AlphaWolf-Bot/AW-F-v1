@@ -37,8 +37,7 @@ dist-ssr
 coverage
 .nyc_output
 
-# Production
-/build
+
 
 # Misc
 .DS_Store
