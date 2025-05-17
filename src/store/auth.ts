@@ -7,9 +7,9 @@ import { supabase, subscribeToUserUpdates, subscribeToCoinsUpdates, subscribeToA
 interface User {
   id: string;
   telegramId: string;
-  username: string;
-  firstName: string;
-  lastName: string;
+  username: string | null;
+  firstName: string | null;
+  lastName: string | null;
   coinBalance: number;
   totalEarned: number;
   level: number;
@@ -21,115 +21,92 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  isAuthenticated: boolean;
+  token: string | null;
   isLoading: boolean;
   error: string | null;
-  login: () => Promise<void>;
-  logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
-  refreshUser: () => Promise<void>;
+  isAuthenticated: boolean;
+
+  login: (initData: string) => Promise<void>;
+  logout: () => Promise<void>;
+  me: () => Promise<void>;
+  refreshToken: (refreshToken: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
-      isAuthenticated: false,
+      token: localStorage.getItem('token'),
       isLoading: false,
       error: null,
+      isAuthenticated: !!localStorage.getItem('token'),
 
-      login: async () => {
+      login: async (initData: string) => {
         try {
           set({ isLoading: true, error: null });
-
-          // Get Telegram WebApp data
-          const webApp = window.Telegram?.WebApp;
-          if (!webApp) {
-            throw new Error('Telegram Web App not initialized');
-          }
-
-          // Login with backend
-          const response = await api.post('/auth/login', {
-            initData: webApp.initData,
-          });
-
-          const { user, token, refreshToken } = response.data;
-
-          // Store tokens
+          const response = await api.post('/auth/login', { initData });
+          const { user, token } = response.data;
+          
           localStorage.setItem('token', token);
-          localStorage.setItem('refresh_token', refreshToken);
-
-          // Connect socket
-          socketService.connect();
-
-          // Set up Supabase subscriptions
-          const userChannel = subscribeToUserUpdates(user.id, (payload) => {
-            set((state) => ({
-              user: { ...state.user!, ...payload.new },
-            }));
-          });
-
-          const coinsChannel = subscribeToCoinsUpdates(user.id, (payload) => {
-            set((state) => ({
-              user: {
-                ...state.user!,
-                coinBalance: payload.new.balance,
-              },
-            }));
-          });
-
-          const achievementsChannel = subscribeToAchievements(user.id, (payload) => {
-            // Handle new achievements
-            console.log('New achievement:', payload);
-          });
-
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-        } catch (error: any) {
-          set({
-            error: error.message || 'Login failed',
-            isLoading: false,
-          });
+          set({ user, token, isAuthenticated: true });
+          
+          // Initialize socket connection
+          socketService.connect(token);
+        } catch (error) {
+          set({ error: 'Failed to login' });
           throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
 
-      logout: () => {
-        // Disconnect socket
-        socketService.disconnect();
-
-        // Clear tokens
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-
-        // Reset state
-        set({
-          user: null,
-          isAuthenticated: false,
-          error: null,
-        });
-      },
-
-      updateUser: (updates) => {
-        set((state) => ({
-          user: state.user ? { ...state.user, ...updates } : null,
-        }));
-      },
-
-      refreshUser: async () => {
+      logout: async () => {
         try {
-          const { user } = get();
-          if (!user) return;
-
-          const response = await api.get(`/users/${user.id}`);
-          set({ user: response.data });
-        } catch (error: any) {
-          set({ error: error.message || 'Failed to refresh user data' });
+          set({ isLoading: true, error: null });
+          await api.post('/auth/logout');
+          
+          localStorage.removeItem('token');
+          socketService.disconnect();
+          set({ user: null, token: null, isAuthenticated: false });
+        } catch (error) {
+          set({ error: 'Failed to logout' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
         }
       },
+
+      me: async () => {
+        try {
+          set({ isLoading: true, error: null });
+          const response = await api.get('/auth/me');
+          set({ user: response.data.user });
+        } catch (error) {
+          set({ error: 'Failed to fetch user data' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      },
+
+      refreshToken: async (refreshToken: string) => {
+        try {
+          set({ isLoading: true, error: null });
+          const response = await api.post('/auth/refresh', { refreshToken });
+          const { token } = response.data;
+          
+          localStorage.setItem('token', token);
+          set({ token });
+          
+          // Reconnect socket with new token
+          socketService.connect(token);
+        } catch (error) {
+          set({ error: 'Failed to refresh token' });
+          throw error;
+        } finally {
+          set({ isLoading: false });
+        }
+      }
     }),
     {
       name: 'auth-storage',

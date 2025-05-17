@@ -1,4 +1,4 @@
-import axios, { AxiosError, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosResponse } from 'axios';
 import { handleApiError, AppError } from './errorHandler';
 import { securityService } from './security';
 import { socketService } from './socket';
@@ -26,7 +26,7 @@ interface MeResponse {
   user: LoginResponse['user'];
 }
 
-const api = axios.create({
+export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 10000,
   headers: {
@@ -161,6 +161,4 @@ export const telegramAPI = {
       },
     });
   },
-};
-
-export default api; 
+}; 

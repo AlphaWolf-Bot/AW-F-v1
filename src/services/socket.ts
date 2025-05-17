@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/auth';
 
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://server-d421.onrender.com';
+
 // Event types
 interface UserUpdate {
   id: string;
@@ -77,121 +79,41 @@ class SocketService {
     });
   }
 
-  private getSocketUrl(): string {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL;
-    if (!socketUrl) {
-      throw new Error('Socket URL not configured');
-    }
-    return socketUrl;
+  connect(token?: string) {
+    if (this.socket?.connected) return;
+
+    this.socket = io(SOCKET_URL, {
+      auth: {
+        token: token || localStorage.getItem('token')
+      }
+    });
+
+    this.setupListeners();
   }
 
-  connect(): void {
-    if (this.socket?.connected || this.isConnecting) {
-      console.log('Socket already connected or connecting');
-      return;
-    }
-
-    this.isConnecting = true;
-    const token = useAuthStore.getState().token;
-
-    if (!token) {
-      console.error('No authentication token available');
-      this.isConnecting = false;
-      return;
-    }
-
-    try {
-      this.socket = io(this.getSocketUrl(), {
-        auth: { token },
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: this.maxReconnectAttempts,
-        reconnectionDelay: this.reconnectDelay,
-        reconnectionDelayMax: this.maxReconnectDelay,
-        timeout: 10000,
-      });
-
-      this.setupSocketListeners();
-    } catch (error) {
-      console.error('Failed to initialize socket:', error);
-      this.isConnecting = false;
-      this.handleReconnect();
-    }
-  }
-
-  private setupSocketListeners(): void {
+  private setupListeners() {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
       console.log('Socket connected');
-      this.isConnecting = false;
-      this.reconnectAttempts = 0;
-      this.reconnectDelay = 1000;
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      this.isConnecting = false;
-      this.handleReconnect();
+    this.socket.on('disconnect', () => {
+      console.log('Socket disconnected');
     });
 
     this.socket.on('error', (error) => {
       console.error('Socket error:', error);
-      this.handleError(error);
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('Socket disconnected:', reason);
-      if (reason === 'io server disconnect') {
-        // Server initiated disconnect, try to reconnect
-        this.reconnect();
-      }
-    });
-
-    // Reattach all event listeners
-    this.eventListeners.forEach((callbacks, event) => {
-      callbacks.forEach((callback) => {
-        this.socket?.on(event, callback);
-      });
-    });
+    // Add more event listeners as needed
   }
 
-  private handleReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    this.reconnectDelay = Math.min(
-      this.reconnectDelay * 1.5,
-      this.maxReconnectDelay
-    );
-
-    console.log(
-      `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay}ms`
-    );
-
-    setTimeout(() => {
-      this.connect();
-    }, this.reconnectDelay);
-  }
-
-  private handleError(error: Error): void {
-    console.error('Socket error:', error);
-    // Notify user of error (you can implement your own error notification system)
-    if (error.message.includes('authentication')) {
-      useAuthStore.getState().logout();
-    }
-  }
-
-  disconnect(): void {
+  disconnect() {
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.isConnecting = false;
-    this.eventListeners.clear();
   }
 
   on(event: string, callback: SocketCallback): void {
@@ -208,11 +130,9 @@ class SocketService {
   }
 
   emit(event: string, data: any): void {
-    if (!this.socket?.connected) {
-      console.error('Socket not connected');
-      return;
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
     }
-    this.socket.emit(event, data);
   }
 
   reconnect(): void {

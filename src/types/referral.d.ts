@@ -1,19 +1,19 @@
+export interface ReferralRewards {
+  perReferral: number;
+  daily: number;
+  weekly: number;
+  monthly: number;
+}
+
 export interface ReferralAchievement {
   id: string;
   name: string;
   description: string;
   reward: number;
   requirement: number;
-  type: 'referral_count' | 'referral_rewards';
+  type: 'referral_count' | 'special';
   icon: string;
   unlockedAt?: string;
-}
-
-export interface ReferralRewards {
-  perReferral: number;
-  daily: number;
-  weekly: number;
-  monthly: number;
 }
 
 export interface ReferralTier {
@@ -46,16 +46,15 @@ export interface ReferralState {
   referralRewards: number;
   referralHistory: ReferralHistory[];
   currentTier: ReferralTier;
-  nextTier: ReferralTier;
+  nextTier: ReferralTier | undefined;
   achievements: ReferralAchievement[];
   specialRewards: SpecialRewards;
   isLoading: boolean;
   error: string | null;
 
   generateReferralLink: () => Promise<string>;
-  getReferralStats: () => Promise<{ count: number; rewards: number; history: ReferralHistory[] }>;
+  fetchReferralStats: () => Promise<void>;
   shareReferralLink: () => Promise<void>;
-  claimReferralReward: (referralId: string) => Promise<number>;
   claimSpecialReward: (type: 'daily' | 'weekly' | 'monthly') => Promise<number>;
-  getTierProgress: () => number;
+  checkAchievements: () => Promise<void>;
 } 
