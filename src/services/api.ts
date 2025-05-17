@@ -1,9 +1,29 @@
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { handleApiError, AppError } from './errorHandler';
 import { securityService } from './security';
 import { socketService } from './socket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+interface LoginResponse {
+  user: {
+    id: string;
+    telegramId: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    coinBalance: number;
+    totalEarned: number;
+    level: number;
+    tapsRemaining: number;
+    referralCode: string;
+  };
+  token: string;
+}
+
+interface MeResponse {
+  user: LoginResponse['user'];
+}
 
 const api = axios.create({
   baseURL: API_URL,
@@ -24,6 +44,11 @@ api.interceptors.request.use((config) => {
   const csrfToken = securityService.getCSRFToken();
   if (csrfToken) {
     config.headers['X-CSRF-Token'] = csrfToken;
+  }
+
+  // Add Telegram Web App data if available
+  if (window.Telegram?.WebApp?.initData) {
+    config.headers['X-Telegram-Init-Data'] = window.Telegram.WebApp.initData;
   }
 
   // Check rate limiting
@@ -58,36 +83,35 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  login: async (data: { username: string; password: string }) => {
-    const response = await api.post('/auth/login', data);
-    const { accessToken, refreshToken, expiresIn } = response.data;
-    securityService.setTokens(accessToken, refreshToken, expiresIn);
-    socketService.connect();
-    return response;
+  login: async (initData: string): Promise<AxiosResponse<LoginResponse>> => {
+    return api.post('/auth/login', { initData });
   },
-  register: async (data: { username: string; password: string; email: string }) => {
-    const response = await api.post('/auth/register', data);
-    const { accessToken, refreshToken, expiresIn } = response.data;
-    securityService.setTokens(accessToken, refreshToken, expiresIn);
-    socketService.connect();
-    return response;
+
+  me: async (): Promise<AxiosResponse<MeResponse>> => {
+    return api.get('/auth/me');
   },
-  logout: async () => {
-    await api.post('/auth/logout');
-    securityService.clearTokens();
-    socketService.disconnect();
+
+  logout: async (): Promise<AxiosResponse<void>> => {
+    return api.post('/auth/logout');
   },
-  getProfile: () => api.get('/auth/profile'),
+
+  refreshToken: async (refreshToken: string): Promise<AxiosResponse<{ token: string }>> => {
+    return api.post('/auth/refresh', { refreshToken });
+  }
 };
 
 // User API
 export const userAPI = {
   getProfile: () => api.get('/users/profile'),
-  updateProfile: (data: any) => api.put('/users/profile', data),
+  updateProfile: async (data: Partial<LoginResponse['user']>): Promise<AxiosResponse<LoginResponse>> => {
+    return api.put('/users/profile', data);
+  },
   getProgress: () => api.get('/users/progress'),
   getAchievements: () => api.get('/users/achievements'),
   getLevel: () => api.get('/users/level'),
-  getStats: () => api.get('/users/stats'),
+  getStats: async (): Promise<AxiosResponse<any>> => {
+    return api.get('/users/stats');
+  },
   updateSettings: (settings: any) => api.put('/users/settings', settings),
   getNotifications: () => api.get('/users/notifications'),
   markNotificationRead: (id: string) => api.put(`/users/notifications/${id}/read`),
@@ -95,7 +119,9 @@ export const userAPI = {
 
 // Coins API
 export const coinsAPI = {
-  getBalance: () => api.get('/coins/balance'),
+  getBalance: async (): Promise<AxiosResponse<{ balance: number }>> => {
+    return api.get('/coins/balance');
+  },
   getHistory: () => api.get('/coins/history'),
   addCoins: (amount: number) => api.post('/coins/add', { amount }),
   withdraw: (data: { amount: number; method: string }) => 
@@ -103,6 +129,9 @@ export const coinsAPI = {
   getExchangeRate: () => api.get('/coins/exchange-rate'),
   convertCoins: (amount: number, currency: string) => 
     api.post('/coins/convert', { amount, currency }),
+  getTransactions: async (): Promise<AxiosResponse<any[]>> => {
+    return api.get('/coins/transactions');
+  }
 };
 
 // Withdrawals API
@@ -132,11 +161,13 @@ export const adsAPI = {
 
 // Telegram API
 export const telegramAPI = {
-  connect: (data: { telegramId: string }) => 
+  connect: (data: { telegramId: string }): Promise<AxiosResponse<void>> => 
     api.post('/telegram/connect', data),
-  disconnect: () => api.post('/telegram/disconnect'),
-  getStatus: () => api.get('/telegram/status'),
-  sendMessage: (data: { message: string }) => 
+  disconnect: (): Promise<AxiosResponse<void>> => 
+    api.post('/telegram/disconnect'),
+  getStatus: (): Promise<AxiosResponse<{ connected: boolean }>> => 
+    api.get('/telegram/status'),
+  sendMessage: (data: { message: string }): Promise<AxiosResponse<void>> => 
     api.post('/telegram/send', data),
   getChats: () => api.get('/telegram/chats'),
   getMessages: (chatId: string) => api.get(`/telegram/messages/${chatId}`),

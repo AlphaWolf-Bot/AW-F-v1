@@ -1,14 +1,12 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react-hooks';
 import { useAuthStore } from '../auth';
 import { authAPI } from '../../services/api';
+import { socketService } from '../../services/socket';
 
-// Mock the API
-jest.mock('../../services/api', () => ({
-  authAPI: {
-    login: jest.fn(),
-    me: jest.fn(),
-  },
-}));
+// Mock dependencies
+jest.mock('../../services/api');
+jest.mock('../../services/socket');
+jest.mock('../../services/security');
 
 describe('Auth Store', () => {
   beforeEach(() => {
@@ -16,18 +14,33 @@ describe('Auth Store', () => {
     jest.clearAllMocks();
     // Clear localStorage
     localStorage.clear();
+    // Reset store state
+    act(() => {
+      useAuthStore.getState().logout();
+    });
   });
 
-  it('should initialize with default values', () => {
-    const { result } = renderHook(() => useAuthStore());
-    
-    expect(result.current.user).toBeNull();
-    expect(result.current.token).toBeNull();
-    expect(result.current.isLoading).toBeFalsy();
-    expect(result.current.error).toBeNull();
+  describe('Initial State', () => {
+    it('should initialize with default values', () => {
+      const { result } = renderHook(() => useAuthStore());
+      
+      expect(result.current.user).toBeNull();
+      expect(result.current.token).toBeNull();
+      expect(result.current.isLoading).toBeFalsy();
+      expect(result.current.error).toBeNull();
+      expect(result.current.isAuthenticated).toBeFalsy();
+    });
+
+    it('should load token from localStorage if available', () => {
+      const mockToken = 'test-token';
+      localStorage.setItem('token', mockToken);
+
+      const { result } = renderHook(() => useAuthStore());
+      expect(result.current.token).toBe(mockToken);
+    });
   });
 
-  it('should handle successful login', async () => {
+  describe('Login Flow', () => {
     const mockUser = {
       id: '1',
       telegramId: '123456789',
@@ -43,118 +56,191 @@ describe('Auth Store', () => {
 
     const mockToken = 'test-token';
 
-    (authAPI.login as jest.Mock).mockResolvedValueOnce({
-      data: {
-        user: mockUser,
-        token: mockToken,
-      },
+    beforeEach(() => {
+      // Mock Telegram WebApp
+      (window as any).Telegram = {
+        WebApp: {
+          ready: jest.fn(),
+          initData: 'test-init-data',
+        },
+      };
     });
 
-    const { result } = renderHook(() => useAuthStore());
+    it('should handle successful login', async () => {
+      (authAPI.login as jest.Mock).mockResolvedValueOnce({
+        data: {
+          user: mockUser,
+          token: mockToken,
+        },
+      });
 
-    await act(async () => {
-      await result.current.login('test-init-data');
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await result.current.login('test-init-data');
+      });
+
+      expect(authAPI.login).toHaveBeenCalledWith('test-init-data');
+      expect(result.current.user).toEqual(mockUser);
+      expect(result.current.token).toBe(mockToken);
+      expect(result.current.isLoading).toBeFalsy();
+      expect(result.current.error).toBeNull();
+      expect(result.current.isAuthenticated).toBeTruthy();
+      expect(localStorage.getItem('token')).toBe(mockToken);
+      expect(socketService.connect).toHaveBeenCalled();
     });
 
-    expect(authAPI.login).toHaveBeenCalledWith('test-init-data');
-    expect(result.current.user).toEqual(mockUser);
-    expect(result.current.token).toBe(mockToken);
-    expect(result.current.isLoading).toBeFalsy();
-    expect(result.current.error).toBeNull();
-    expect(localStorage.getItem('token')).toBe(mockToken);
+    it('should handle login error', async () => {
+      const errorMessage = 'Login failed';
+      (authAPI.login as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await expect(result.current.login('test-init-data')).rejects.toThrow(errorMessage);
+      });
+
+      expect(result.current.user).toBeNull();
+      expect(result.current.token).toBeNull();
+      expect(result.current.isLoading).toBeFalsy();
+      expect(result.current.error).toBe(errorMessage);
+      expect(result.current.isAuthenticated).toBeFalsy();
+      expect(localStorage.getItem('token')).toBeNull();
+      expect(socketService.connect).not.toHaveBeenCalled();
+    });
+
+    it('should handle missing Telegram WebApp', async () => {
+      (window as any).Telegram = undefined;
+
+      const { result } = renderHook(() => useAuthStore());
+
+      await act(async () => {
+        await expect(result.current.login('test-init-data')).rejects.toThrow('Telegram Web App not initialized');
+      });
+
+      expect(result.current.user).toBeNull();
+      expect(result.current.token).toBeNull();
+      expect(result.current.isLoading).toBeFalsy();
+      expect(result.current.isAuthenticated).toBeFalsy();
+    });
   });
 
-  it('should handle login error', async () => {
-    const errorMessage = 'Login failed';
-    (authAPI.login as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
+  describe('Logout Flow', () => {
+    it('should handle logout correctly', () => {
+      const { result } = renderHook(() => useAuthStore());
 
-    const { result } = renderHook(() => useAuthStore());
+      // Set initial state
+      act(() => {
+        result.current.user = {
+          id: '1',
+          telegramId: '123456789',
+          username: 'testuser',
+          firstName: 'Test',
+          lastName: 'User',
+          coinBalance: 1000,
+          totalEarned: 1000,
+          level: 1,
+          tapsRemaining: 100,
+          referralCode: 'ABC123',
+        };
+        result.current.token = 'test-token';
+        localStorage.setItem('token', 'test-token');
+      });
 
-    await act(async () => {
-      await result.current.login('test-init-data');
+      act(() => {
+        result.current.logout();
+      });
+
+      expect(result.current.user).toBeNull();
+      expect(result.current.token).toBeNull();
+      expect(result.current.isAuthenticated).toBeFalsy();
+      expect(localStorage.getItem('token')).toBeNull();
+      expect(socketService.disconnect).toHaveBeenCalled();
     });
-
-    expect(result.current.user).toBeNull();
-    expect(result.current.token).toBeNull();
-    expect(result.current.isLoading).toBeFalsy();
-    expect(result.current.error).toBe(errorMessage);
-    expect(localStorage.getItem('token')).toBeNull();
   });
 
-  it('should handle logout', () => {
-    const { result } = renderHook(() => useAuthStore());
+  describe('User Data Updates', () => {
+    it('should update user data correctly', () => {
+      const { result } = renderHook(() => useAuthStore());
 
-    // Set initial state
-    act(() => {
-      result.current.user = {
+      // Set initial state
+      act(() => {
+        result.current.user = {
+          id: '1',
+          telegramId: '123456789',
+          username: 'testuser',
+          firstName: 'Test',
+          lastName: 'User',
+          coinBalance: 1000,
+          totalEarned: 1000,
+          level: 1,
+          tapsRemaining: 100,
+          referralCode: 'ABC123',
+        };
+      });
+
+      // Update user data
+      act(() => {
+        result.current.updateUserData({
+          coinBalance: 2000,
+          level: 2,
+        });
+      });
+
+      expect(result.current.user).toEqual({
         id: '1',
         telegramId: '123456789',
         username: 'testuser',
         firstName: 'Test',
         lastName: 'User',
-        coinBalance: 1000,
+        coinBalance: 2000,
         totalEarned: 1000,
-        level: 1,
+        level: 2,
         tapsRemaining: 100,
         referralCode: 'ABC123',
-      };
-      result.current.token = 'test-token';
-      localStorage.setItem('token', 'test-token');
+      });
     });
 
-    act(() => {
-      result.current.logout();
-    });
+    it('should handle null user state', () => {
+      const { result } = renderHook(() => useAuthStore());
 
-    expect(result.current.user).toBeNull();
-    expect(result.current.token).toBeNull();
-    expect(localStorage.getItem('token')).toBeNull();
+      act(() => {
+        result.current.updateUserData({
+          coinBalance: 2000,
+        });
+      });
+
+      expect(result.current.user).toBeNull();
+    });
   });
 
-  it('should handle successful user refresh', async () => {
-    const mockUser = {
-      id: '1',
-      telegramId: '123456789',
-      username: 'testuser',
-      firstName: 'Test',
-      lastName: 'User',
-      coinBalance: 1000,
-      totalEarned: 1000,
-      level: 1,
-      tapsRemaining: 100,
-      referralCode: 'ABC123',
-    };
+  describe('Real-time Updates', () => {
+    it('should handle socket events correctly', () => {
+      const { result } = renderHook(() => useAuthStore());
 
-    (authAPI.me as jest.Mock).mockResolvedValueOnce({
-      data: {
-        user: mockUser,
-      },
+      // Set initial state
+      act(() => {
+        result.current.user = {
+          id: '1',
+          telegramId: '123456789',
+          username: 'testuser',
+          firstName: 'Test',
+          lastName: 'User',
+          coinBalance: 1000,
+          totalEarned: 1000,
+          level: 1,
+          tapsRemaining: 100,
+          referralCode: 'ABC123',
+        };
+      });
+
+      // Simulate socket events
+      act(() => {
+        const socketCallback = (socketService.on as jest.Mock).mock.calls[0][1];
+        socketCallback({ coinBalance: 2000 });
+      });
+
+      expect(result.current.user?.coinBalance).toBe(2000);
     });
-
-    const { result } = renderHook(() => useAuthStore());
-
-    await act(async () => {
-      await result.current.refreshUser();
-    });
-
-    expect(authAPI.me).toHaveBeenCalled();
-    expect(result.current.user).toEqual(mockUser);
-    expect(result.current.isLoading).toBeFalsy();
-    expect(result.current.error).toBeNull();
-  });
-
-  it('should handle user refresh error', async () => {
-    const errorMessage = 'Failed to refresh user data';
-    (authAPI.me as jest.Mock).mockRejectedValueOnce(new Error(errorMessage));
-
-    const { result } = renderHook(() => useAuthStore());
-
-    await act(async () => {
-      await result.current.refreshUser();
-    });
-
-    expect(result.current.user).toBeNull();
-    expect(result.current.isLoading).toBeFalsy();
-    expect(result.current.error).toBe(errorMessage);
   });
 }); 
