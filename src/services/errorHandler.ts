@@ -1,4 +1,5 @@
 import { AxiosError } from 'axios';
+import { api } from './api';
 
 export class AppError extends Error {
   constructor(
@@ -69,4 +70,112 @@ export const getErrorMessage = (error: unknown): string => {
     return error.message;
   }
   return 'An unexpected error occurred';
-}; 
+};
+
+interface ErrorLog {
+  timestamp: string;
+  error: string;
+  stack?: string;
+  context?: Record<string, any>;
+  userId?: string;
+  sessionId?: string;
+}
+
+class ErrorHandler {
+  private static instance: ErrorHandler;
+  private errorQueue: ErrorLog[] = [];
+  private isProcessing = false;
+  private readonly maxQueueSize = 100;
+  private readonly flushInterval = 5000; // 5 seconds
+
+  private constructor() {
+    this.setupErrorListeners();
+    this.startPeriodicFlush();
+  }
+
+  static getInstance(): ErrorHandler {
+    if (!ErrorHandler.instance) {
+      ErrorHandler.instance = new ErrorHandler();
+    }
+    return ErrorHandler.instance;
+  }
+
+  private setupErrorListeners(): void {
+    window.addEventListener('error', (event) => {
+      this.handleError(event.error || new Error(event.message));
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      this.handleError(event.reason);
+    });
+  }
+
+  private startPeriodicFlush(): void {
+    setInterval(() => {
+      this.flushErrors();
+    }, this.flushInterval);
+  }
+
+  handleError(error: Error, context?: Record<string, any>): void {
+    const errorLog: ErrorLog = {
+      timestamp: new Date().toISOString(),
+      error: error.message,
+      stack: error.stack,
+      context,
+      userId: this.getUserId(),
+      sessionId: this.getSessionId(),
+    };
+
+    this.errorQueue.push(errorLog);
+
+    if (this.errorQueue.length >= this.maxQueueSize) {
+      this.flushErrors();
+    }
+
+    // Log to console in development
+    if (import.meta.env.DEV) {
+      console.error('Error:', error);
+      if (context) {
+        console.error('Context:', context);
+      }
+    }
+  }
+
+  private async flushErrors(): Promise<void> {
+    if (this.isProcessing || this.errorQueue.length === 0) return;
+
+    this.isProcessing = true;
+    const errorsToSend = [...this.errorQueue];
+    this.errorQueue = [];
+
+    try {
+      await api.post('/logs/errors', { errors: errorsToSend });
+    } catch (error) {
+      // If sending fails, put errors back in queue
+      this.errorQueue = [...errorsToSend, ...this.errorQueue];
+      console.error('Failed to send error logs:', error);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  private getUserId(): string | undefined {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      return user.id;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private getSessionId(): string {
+    let sessionId = sessionStorage.getItem('sessionId');
+    if (!sessionId) {
+      sessionId = Math.random().toString(36).substring(2);
+      sessionStorage.setItem('sessionId', sessionId);
+    }
+    return sessionId;
+  }
+}
+
+export const errorHandler = ErrorHandler.getInstance(); 

@@ -3,7 +3,8 @@ import { handleApiError, AppError } from './errorHandler';
 import { securityService } from './security';
 import { socketService } from './socket';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://server-d421.onrender.com';
+const TELEGRAM_BOT_TOKEN = '8098670589:AAGYfKbo_i_TLdlPjpJ7vxZvouWmIsy0B0U';
 
 interface LoginResponse {
   user: {
@@ -27,57 +28,36 @@ interface MeResponse {
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    'X-Telegram-Bot-Token': TELEGRAM_BOT_TOKEN,
   },
-  timeout: 10000, // 10 seconds
 });
 
-// Add auth token to requests
-api.interceptors.request.use((config) => {
-  const token = securityService.getAccessToken();
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request interceptor
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  // Add CSRF token
-  const csrfToken = securityService.getCSRFToken();
-  if (csrfToken) {
-    config.headers['X-CSRF-Token'] = csrfToken;
-  }
-
-  // Add Telegram Web App data if available
-  if (window.Telegram?.WebApp?.initData) {
-    config.headers['X-Telegram-Init-Data'] = window.Telegram.WebApp.initData;
-  }
-
-  // Check rate limiting
-  if (securityService.isRateLimited(config.url || '')) {
-    throw new AppError('Rate limit exceeded. Please try again later.', 'RATE_LIMIT', 429);
-  }
-
-  return config;
-});
-
-// Handle response errors
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
-  async (error: AxiosError) => {
-    const appError = handleApiError(error);
-
-    // Handle token expiration
-    if (appError.code === 'AUTH_EXPIRED') {
-      const refreshed = await securityService.refreshToken();
-      if (refreshed) {
-        // Retry the original request
-        const config = error.config;
-        if (config) {
-          return api(config);
-        }
-      }
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
-
-    return Promise.reject(appError);
+    return Promise.reject(error);
   }
 );
 
