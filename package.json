@@ -16,16 +16,20 @@
     "cypress:open": "cypress open",
     "cypress:run": "cypress run",
     "test:e2e": "cypress run",
-    "test:all": "npm run test && npm run test:e2e"
+    "test:all": "npm run test && npm run test:e2e",
+    "test:socket": "npx ts-node --esm src/scripts/testSocketConnection.ts",
+    "start": "vite preview --host 0.0.0.0 --port 5173"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.2.0",
+    "@supabase/supabase-js": "^2.39.3",
     "axios": "^1.6.2",
     "framer-motion": "^10.16.16",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.1",
+    "socket.io-client": "^4.7.4",
     "zustand": "^4.4.7"
   },
   "devDependencies": {
@@ -50,11 +54,14 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.32",
     "prettier": "^3.1.1",
-    "socket.io-client": "^4.7.4",
     "tailwindcss": "^3.3.6",
     "terser": "^5.39.0",
     "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
     "vite": "^5.0.8"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

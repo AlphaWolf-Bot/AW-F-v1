@@ -1,9 +1,8 @@
-import { socketService } from '../socket';
 import { io } from 'socket.io-client';
+import { socketService } from '../socket';
 
-jest.mock('socket.io-client');
-
-describe('SocketService', () => {
+// Mock socket.io-client
+jest.mock('socket.io-client', () => {
   const mockSocket = {
     on: jest.fn(),
     off: jest.fn(),
@@ -11,195 +10,163 @@ describe('SocketService', () => {
     disconnect: jest.fn(),
     connected: false,
   };
+  return {
+    io: jest.fn(() => mockSocket),
+  };
+});
+
+type MockCall = [string, (...args: any[]) => void];
+
+describe('SocketService', () => {
+  let mockSocket: any;
 
   beforeEach(() => {
+    // Clear all mocks
     jest.clearAllMocks();
     localStorage.clear();
-    (io as jest.Mock).mockReturnValue(mockSocket);
+    
+    // Get the mock socket instance
+    mockSocket = (io as jest.Mock)();
+    mockSocket.connected = false;
   });
 
   describe('Connection Management', () => {
-    it('should not connect without token', () => {
+    it('should not connect without a token', () => {
       socketService.connect();
       expect(io).not.toHaveBeenCalled();
     });
 
-    it('should connect with token', () => {
+    it('should connect with a valid token', () => {
       localStorage.setItem('token', 'test-token');
       socketService.connect();
-      expect(io).toHaveBeenCalledWith(expect.any(String), {
-        auth: { token: 'test-token' },
-        transports: ['websocket'],
-        reconnection: true,
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-        timeout: 10000,
-      });
+      expect(io).toHaveBeenCalledWith('wss://server-d421.onrender.com', expect.any(Object));
     });
 
     it('should not reconnect if already connected', () => {
+      localStorage.setItem('token', 'test-token');
       mockSocket.connected = true;
       socketService.connect();
-      expect(mockSocket.connect).not.toHaveBeenCalled();
+      expect(io).toHaveBeenCalledTimes(1);
     });
 
-    it('should handle disconnect', () => {
+    it('should disconnect properly', () => {
+      localStorage.setItem('token', 'test-token');
+      socketService.connect();
       socketService.disconnect();
       expect(mockSocket.disconnect).toHaveBeenCalled();
     });
   });
 
   describe('Event Handling', () => {
-    let callback: Function;
-
     beforeEach(() => {
       localStorage.setItem('token', 'test-token');
       socketService.connect();
-      callback = mockSocket.on.mock.calls[0][1];
     });
 
-    it('should handle user update events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('user:update', mockCallback);
-
-      const updateData = {
-        id: '1',
-        coinBalance: 1000,
-      };
-      callback(updateData);
-
-      expect(mockCallback).toHaveBeenCalledWith(updateData);
+    it('should register event listeners', () => {
+      const callback = jest.fn();
+      socketService.on('test:event', callback);
+      expect(mockSocket.on).toHaveBeenCalledWith('test:event', callback);
     });
 
-    it('should handle level up events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('user:levelUp', mockCallback);
-
-      const levelData = {
-        level: 2,
-        experience: 100,
-        experienceToNext: 200,
-      };
-      callback(levelData);
-
-      expect(mockCallback).toHaveBeenCalledWith(levelData);
+    it('should remove event listeners', () => {
+      const callback = jest.fn();
+      socketService.on('test:event', callback);
+      socketService.off('test:event', callback);
+      expect(mockSocket.off).toHaveBeenCalledWith('test:event', callback);
     });
 
-    it('should handle achievement events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('user:achievement', mockCallback);
-
-      const achievementData = {
-        id: '1',
-        name: 'First Win',
-        description: 'Win your first game',
-        icon: '🏆',
-        unlockedAt: '2024-01-01T00:00:00Z',
-      };
-      callback(achievementData);
-
-      expect(mockCallback).toHaveBeenCalledWith(achievementData);
+    it('should handle connection events', () => {
+      const connectCallback = jest.fn();
+      socketService.on('connect', connectCallback);
+      
+      // Simulate connect event
+      const connectCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'connect');
+      expect(connectCall).toBeDefined();
+      connectCall![1]();
+      
+      expect(connectCallback).toHaveBeenCalled();
     });
 
-    it('should handle coin update events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('coins:update', mockCallback);
-
-      const coinData = {
-        balance: 1000,
-        change: 100,
-        reason: 'game_win',
-        timestamp: '2024-01-01T00:00:00Z',
-      };
-      callback(coinData);
-
-      expect(mockCallback).toHaveBeenCalledWith(coinData);
-    });
-
-    it('should handle withdrawal events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('withdrawal:status', mockCallback);
-
-      const withdrawalData = {
-        id: '1',
-        status: 'completed',
-        amount: 100,
-        method: 'telegram',
-        timestamp: '2024-01-01T00:00:00Z',
-      };
-      callback(withdrawalData);
-
-      expect(mockCallback).toHaveBeenCalledWith(withdrawalData);
-    });
-
-    it('should handle ad events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('ad:impression', mockCallback);
-
-      const adData = {
-        id: '1',
-        type: 'impression',
-        timestamp: '2024-01-01T00:00:00Z',
-      };
-      callback(adData);
-
-      expect(mockCallback).toHaveBeenCalledWith(adData);
-    });
-
-    it('should handle system events', () => {
-      const mockCallback = jest.fn();
-      socketService.on('system:maintenance', mockCallback);
-
-      const systemData = {
-        startTime: '2024-01-01T00:00:00Z',
-        duration: 3600,
-      };
-      callback(systemData);
-
-      expect(mockCallback).toHaveBeenCalledWith(systemData);
+    it('should handle connection errors', () => {
+      const errorCallback = jest.fn();
+      socketService.on('connection:failed', errorCallback);
+      
+      // Simulate multiple connection errors
+      const errorCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'connect_error');
+      expect(errorCall).toBeDefined();
+      for (let i = 0; i < 5; i++) {
+        errorCall![1](new Error('Connection failed'));
+      }
+      
+      expect(errorCallback).toHaveBeenCalledWith({
+        error: 'Failed to connect to server',
+        attempts: 5,
+      });
     });
   });
 
   describe('Error Handling', () => {
-    it('should handle connection errors', () => {
-      const mockCallback = jest.fn();
-      socketService.on('connection:failed', mockCallback);
-
-      const errorCallback = mockSocket.on.mock.calls.find(
-        call => call[0] === 'connect_error'
-      )[1];
-      errorCallback(new Error('Connection failed'));
-
-      expect(mockCallback).toHaveBeenCalledWith({
-        error: 'Failed to connect to server',
-        attempts: 1,
-      });
+    beforeEach(() => {
+      localStorage.setItem('token', 'test-token');
+      socketService.connect();
     });
 
     it('should handle socket errors', () => {
-      const mockCallback = jest.fn();
-      socketService.on('error', mockCallback);
+      const errorCallback = jest.fn();
+      socketService.on('error', errorCallback);
+      
+      const errorCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'error');
+      expect(errorCall).toBeDefined();
+      const testError = new Error('Test error');
+      errorCall![1](testError);
+      
+      expect(errorCallback).toHaveBeenCalledWith(testError);
+    });
 
-      const errorCallback = mockSocket.on.mock.calls.find(
-        call => call[0] === 'error'
-      )[1];
-      errorCallback(new Error('Socket error'));
-
-      expect(mockCallback).toHaveBeenCalled();
+    it('should handle listener errors gracefully', () => {
+      const errorCallback = jest.fn();
+      const throwingCallback = jest.fn().mockImplementation(() => {
+        throw new Error('Listener error');
+      });
+      
+      socketService.on('test:event', throwingCallback);
+      socketService.on('error', errorCallback);
+      
+      const eventCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'test:event');
+      expect(eventCall).toBeDefined();
+      eventCall![1]({ data: 'test' });
+      
+      expect(errorCallback).toHaveBeenCalled();
     });
   });
 
-  describe('Event Cleanup', () => {
-    it('should remove event listeners', () => {
-      const mockCallback = jest.fn();
-      socketService.on('user:update', mockCallback);
-      socketService.off('user:update', mockCallback);
+  describe('Reconnection Logic', () => {
+    beforeEach(() => {
+      localStorage.setItem('token', 'test-token');
+      socketService.connect();
+    });
 
-      const updateData = { id: '1' };
-      const callback = mockSocket.on.mock.calls[0][1];
-      callback(updateData);
+    it('should attempt reconnection on connection error', () => {
+      const errorCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'connect_error');
+      expect(errorCall).toBeDefined();
+      errorCall![1](new Error('Connection failed'));
+      
+      expect(mockSocket.connect).toHaveBeenCalled();
+    });
 
-      expect(mockCallback).not.toHaveBeenCalled();
+    it('should stop reconnection attempts after max retries', () => {
+      const errorCallback = jest.fn();
+      socketService.on('connection:failed', errorCallback);
+      
+      const errorCall = (mockSocket.on.mock.calls as MockCall[]).find(call => call[0] === 'connect_error');
+      expect(errorCall).toBeDefined();
+      for (let i = 0; i < 6; i++) {
+        errorCall![1](new Error('Connection failed'));
+      }
+      
+      expect(errorCallback).toHaveBeenCalled();
+      expect(mockSocket.connect).toHaveBeenCalledTimes(5);
     });
   });
 }); 

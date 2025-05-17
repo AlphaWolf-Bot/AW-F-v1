@@ -1,7 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { handleApiError } from './errorHandler';
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
+import { useAuthStore } from '@/store/auth';
 
 // Event types
 interface UserUpdate {
@@ -52,153 +50,178 @@ interface AdEvent {
   timestamp: string;
 }
 
-type EventCallback<T = any> = (data: T) => void;
+type SocketCallback = (data: any) => void;
 
 class SocketService {
   private socket: Socket | null = null;
-  private listeners: Map<string, Set<EventCallback>> = new Map();
+  private eventListeners: Map<string, Set<SocketCallback>> = new Map();
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
+  private reconnectDelay = 1000; // Start with 1 second
+  private maxReconnectDelay = 30000; // Max 30 seconds
+  private isConnecting = false;
 
-  connect() {
-    if (this.socket?.connected) return;
+  constructor() {
+    this.setupErrorHandling();
+  }
 
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    this.socket = io(SOCKET_URL, {
-      auth: { token },
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      reconnectionDelay: this.reconnectDelay,
-      timeout: 10000,
+  private setupErrorHandling() {
+    window.addEventListener('online', () => {
+      console.log('Network connection restored');
+      this.reconnect();
     });
 
-    this.setupListeners();
-  }
-
-  disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.reconnectAttempts = 0;
-    }
-  }
-
-  on<T>(event: string, callback: EventCallback<T>) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)?.add(callback as EventCallback);
-  }
-
-  off<T>(event: string, callback: EventCallback<T>) {
-    this.listeners.get(event)?.delete(callback as EventCallback);
-  }
-
-  private notifyListeners<T>(event: string, data: T) {
-    this.listeners.get(event)?.forEach(callback => {
-      try {
-        callback(data);
-      } catch (error) {
-        console.error(`Error in ${event} listener:`, error);
-      }
+    window.addEventListener('offline', () => {
+      console.log('Network connection lost');
+      this.disconnect();
     });
   }
 
-  private setupListeners() {
+  private getSocketUrl(): string {
+    const socketUrl = import.meta.env.VITE_SOCKET_URL;
+    if (!socketUrl) {
+      throw new Error('Socket URL not configured');
+    }
+    return socketUrl;
+  }
+
+  connect(): void {
+    if (this.socket?.connected || this.isConnecting) {
+      console.log('Socket already connected or connecting');
+      return;
+    }
+
+    this.isConnecting = true;
+    const token = useAuthStore.getState().token;
+
+    if (!token) {
+      console.error('No authentication token available');
+      this.isConnecting = false;
+      return;
+    }
+
+    try {
+      this.socket = io(this.getSocketUrl(), {
+        auth: { token },
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: this.maxReconnectAttempts,
+        reconnectionDelay: this.reconnectDelay,
+        reconnectionDelayMax: this.maxReconnectDelay,
+        timeout: 10000,
+      });
+
+      this.setupSocketListeners();
+    } catch (error) {
+      console.error('Failed to initialize socket:', error);
+      this.isConnecting = false;
+      this.handleReconnect();
+    }
+  }
+
+  private setupSocketListeners(): void {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
       console.log('Socket connected');
+      this.isConnecting = false;
       this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      this.isConnecting = false;
+      this.handleReconnect();
+    });
+
+    this.socket.on('error', (error) => {
+      console.error('Socket error:', error);
+      this.handleError(error);
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Socket disconnected:', reason);
       if (reason === 'io server disconnect') {
         // Server initiated disconnect, try to reconnect
-        this.socket?.connect();
+        this.reconnect();
       }
     });
 
-    this.socket.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
-      this.reconnectAttempts++;
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        this.disconnect();
-        // Notify listeners of connection failure
-        this.notifyListeners('connection:failed', {
-          error: 'Failed to connect to server',
-          attempts: this.reconnectAttempts
-        });
-      }
+    // Reattach all event listeners
+    this.eventListeners.forEach((callbacks, event) => {
+      callbacks.forEach((callback) => {
+        this.socket?.on(event, callback);
+      });
     });
+  }
 
-    this.socket.on('error', (error) => {
-      console.error('Socket error:', handleApiError(error));
-      this.notifyListeners('error', error);
-    });
+  private handleReconnect(): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached');
+      return;
+    }
 
-    // User events
-    this.socket.on('user:update', (data: UserUpdate) => {
-      this.notifyListeners('user:update', data);
-    });
+    this.reconnectAttempts++;
+    this.reconnectDelay = Math.min(
+      this.reconnectDelay * 1.5,
+      this.maxReconnectDelay
+    );
 
-    this.socket.on('user:levelUp', (data: LevelUpdate) => {
-      this.notifyListeners('user:levelUp', data);
-    });
+    console.log(
+      `Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts}) in ${this.reconnectDelay}ms`
+    );
 
-    this.socket.on('user:achievement', (data: Achievement) => {
-      this.notifyListeners('user:achievement', data);
-    });
+    setTimeout(() => {
+      this.connect();
+    }, this.reconnectDelay);
+  }
 
-    // Coins events
-    this.socket.on('coins:update', (data: CoinsUpdate) => {
-      this.notifyListeners('coins:update', data);
-    });
+  private handleError(error: Error): void {
+    console.error('Socket error:', error);
+    // Notify user of error (you can implement your own error notification system)
+    if (error.message.includes('authentication')) {
+      useAuthStore.getState().logout();
+    }
+  }
 
-    this.socket.on('coins:transaction', (data: CoinsUpdate) => {
-      this.notifyListeners('coins:transaction', data);
-    });
+  disconnect(): void {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.isConnecting = false;
+    this.eventListeners.clear();
+  }
 
-    // Withdrawal events
-    this.socket.on('withdrawal:status', (data: WithdrawalUpdate) => {
-      this.notifyListeners('withdrawal:status', data);
-    });
+  on(event: string, callback: SocketCallback): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)?.add(callback);
+    this.socket?.on(event, callback);
+  }
 
-    // Ad events
-    this.socket.on('ad:impression', (data: AdEvent) => {
-      this.notifyListeners('ad:impression', data);
-    });
+  off(event: string, callback: SocketCallback): void {
+    this.eventListeners.get(event)?.delete(callback);
+    this.socket?.off(event, callback);
+  }
 
-    this.socket.on('ad:click', (data: AdEvent) => {
-      this.notifyListeners('ad:click', data);
-    });
+  emit(event: string, data: any): void {
+    if (!this.socket?.connected) {
+      console.error('Socket not connected');
+      return;
+    }
+    this.socket.emit(event, data);
+  }
 
-    this.socket.on('ad:reward', (data: AdEvent) => {
-      this.notifyListeners('ad:reward', data);
-    });
+  reconnect(): void {
+    this.disconnect();
+    this.connect();
+  }
 
-    // Telegram events
-    this.socket.on('telegram:message', (data: { message: string; timestamp: string }) => {
-      this.notifyListeners('telegram:message', data);
-    });
-
-    this.socket.on('telegram:status', (data: { connected: boolean; lastSeen?: string }) => {
-      this.notifyListeners('telegram:status', data);
-    });
-
-    // System events
-    this.socket.on('system:maintenance', (data: { startTime: string; duration: number }) => {
-      this.notifyListeners('system:maintenance', data);
-    });
-
-    this.socket.on('system:update', (data: { version: string; changes: string[] }) => {
-      this.notifyListeners('system:update', data);
-    });
+  isConnected(): boolean {
+    return this.socket?.connected || false;
   }
 }
 

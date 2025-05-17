@@ -1,132 +1,142 @@
 import { create } from 'zustand';
-import { authAPI } from '../services/api';
-import { socketService } from '../services/socket';
+import { persist } from 'zustand/middleware';
+import api from '@/services/api';
+import { socketService } from '@/services/socket';
+import { supabase, subscribeToUserUpdates, subscribeToCoinsUpdates, subscribeToAchievements } from '@/services/supabase';
 
 interface User {
   id: string;
   telegramId: string;
-  username: string | null;
-  firstName: string | null;
-  lastName: string | null;
+  username: string;
+  firstName: string;
+  lastName: string;
   coinBalance: number;
   totalEarned: number;
   level: number;
+  experience: number;
+  experienceToNext: number;
   tapsRemaining: number;
   referralCode: string;
 }
 
-interface LoginResponse {
-  user: User;
-  token: string;
-}
-
-interface MeResponse {
-  user: User;
-}
-
 interface AuthState {
   user: User | null;
-  token: string | null;
+  isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
-  isAuthenticated: boolean;
-  login: (initData: string) => Promise<void>;
+  login: () => Promise<void>;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
   refreshUser: () => Promise<void>;
-  updateUserData: (data: Partial<User>) => void;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  token: localStorage.getItem('token'),
-  isLoading: false,
-  error: null,
-  isAuthenticated: false,
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      error: null,
 
-  login: async (initData: string) => {
-    try {
-      set({ isLoading: true, error: null });
-      
-      // Verify Telegram Web App data
-      if (!window.Telegram?.WebApp?.initData) {
-        throw new Error('Telegram Web App not initialized');
-      }
+      login: async () => {
+        try {
+          set({ isLoading: true, error: null });
 
-      const { data } = await authAPI.login(initData) as { data: LoginResponse };
-      
-      // Store token and user data
-      localStorage.setItem('token', data.token);
-      
-      // Initialize socket connection
-      socketService.connect();
-      
-      // Set up socket listeners for real-time updates
-      socketService.on('user:update', (userData) => {
-        get().updateUserData(userData);
-      });
+          // Get Telegram WebApp data
+          const webApp = window.Telegram?.WebApp;
+          if (!webApp) {
+            throw new Error('Telegram Web App not initialized');
+          }
 
-      socketService.on('coins:update', (data) => {
-        get().updateUserData({ coinBalance: data.balance });
-      });
+          // Login with backend
+          const response = await api.post('/auth/login', {
+            initData: webApp.initData,
+          });
 
-      socketService.on('level:update', (data) => {
-        get().updateUserData({ level: data.level });
-      });
+          const { user, token, refreshToken } = response.data;
 
-      set({ 
-        user: data.user, 
-        token: data.token, 
-        isLoading: false,
-        isAuthenticated: true 
-      });
-    } catch (error) {
-      localStorage.removeItem('token');
-      set({ 
-        user: null,
-        token: null,
-        error: error instanceof Error ? error.message : 'Login failed', 
-        isLoading: false,
-        isAuthenticated: false
-      });
-      throw error;
+          // Store tokens
+          localStorage.setItem('token', token);
+          localStorage.setItem('refresh_token', refreshToken);
+
+          // Connect socket
+          socketService.connect();
+
+          // Set up Supabase subscriptions
+          const userChannel = subscribeToUserUpdates(user.id, (payload) => {
+            set((state) => ({
+              user: { ...state.user!, ...payload.new },
+            }));
+          });
+
+          const coinsChannel = subscribeToCoinsUpdates(user.id, (payload) => {
+            set((state) => ({
+              user: {
+                ...state.user!,
+                coinBalance: payload.new.balance,
+              },
+            }));
+          });
+
+          const achievementsChannel = subscribeToAchievements(user.id, (payload) => {
+            // Handle new achievements
+            console.log('New achievement:', payload);
+          });
+
+          set({
+            user,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } catch (error: any) {
+          set({
+            error: error.message || 'Login failed',
+            isLoading: false,
+          });
+          throw error;
+        }
+      },
+
+      logout: () => {
+        // Disconnect socket
+        socketService.disconnect();
+
+        // Clear tokens
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+
+        // Reset state
+        set({
+          user: null,
+          isAuthenticated: false,
+          error: null,
+        });
+      },
+
+      updateUser: (updates) => {
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updates } : null,
+        }));
+      },
+
+      refreshUser: async () => {
+        try {
+          const { user } = get();
+          if (!user) return;
+
+          const response = await api.get(`/users/${user.id}`);
+          set({ user: response.data });
+        } catch (error: any) {
+          set({ error: error.message || 'Failed to refresh user data' });
+        }
+      },
+    }),
+    {
+      name: 'auth-storage',
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
-  },
-
-  logout: () => {
-    localStorage.removeItem('token');
-    socketService.disconnect();
-    set({ 
-      user: null, 
-      token: null,
-      isAuthenticated: false 
-    });
-  },
-
-  refreshUser: async () => {
-    try {
-      set({ isLoading: true, error: null });
-      const { data } = await authAPI.me() as { data: MeResponse };
-      set({ 
-        user: data.user, 
-        isLoading: false,
-        isAuthenticated: true 
-      });
-    } catch (error) {
-      localStorage.removeItem('token');
-      set({ 
-        user: null,
-        token: null,
-        error: error instanceof Error ? error.message : 'Failed to refresh user data', 
-        isLoading: false,
-        isAuthenticated: false
-      });
-      throw error;
-    }
-  },
-
-  updateUserData: (data: Partial<User>) => {
-    set((state) => ({
-      user: state.user ? { ...state.user, ...data } : null
-    }));
-  }
-})); 
+  )
+); 
