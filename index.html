@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alpha Wulf - Telegram Mini App</title>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3014995575427702" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ffd700;
+            --secondary: #1f1f1f;
+            --background: #0f0f0f;
+            --text: #e0e0e0;
+            --accent: #8b7500;
+        }
+        
+        body {
+            background-color: var(--background);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(to bottom, #1a1a1a, #0a0a0a);
+        }
+        
+        .gold-border {
+            border: 2px solid var(--primary);
+        }
+        
+        .gold-text {
+            color: var(--primary);
+        }
+        
+        .page {
+            display: none;
+            padding-bottom: 80px;
+        }
+        
+        .active-page {
+            display: block;
+        }
+        
+        .nav-btn {
+            background-color: var(--secondary);
+            color: var(--text);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-btn:hover, .nav-btn.active {
+            background-color: var(--primary);
+            color: var(--secondary);
+        }
+        
+        .coin {
+            width: 150px;
+            height: 150px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 20px var(--accent);
+            transition: transform 0.1s ease-in-out;
+            background-image: linear-gradient(145deg, #ffd700, #8b7500);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #000;
+            -webkit-user-select: none;
+               -moz-user-select: none;
+                    user-select: none;
+        }
+        
+        .coin:hover {
+            transform: scale(1.05);
+        }
+        
+        .coin:active {
+            transform: scale(0.95);
+        }
+        
+        .progress-bar {
+            height: 20px;
+            background-color: var(--secondary);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary);
+            transition: width 0.3s ease;
+        }
+        
+        .card {
+            background-color: var(--secondary);
+            border-radius: 10px;
+            border: 1px solid #333;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+        }
+        
+        .task-btn, .withdraw-btn, .game-btn {
+            background-color: var(--primary);
+            color: #000;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .task-btn:hover, .withdraw-btn:hover, .game-btn:hover {
+            background-color: var(--accent);
+            color: var(--text);
+        }
+        
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .disabled:hover {
+            background-color: var(--primary);
+            transform: none;
+        }
+        
+        .game-area {
+            min-height: 200px;
+            border: 2px solid var(--accent);
+        }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: var(--secondary);
+            border: 2px solid var(--primary);
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 20px;
+        }
+        
+        .wolf-icon {
+            position: absolute;
+            opacity: 0.05;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .tournament-banner {
+            background: linear-gradient(to right, #000, #333, #000);
+            border: 2px solid var(--primary);
+        }
+
+        /* Game specific styles */
+        .memory-card {
+            width: 70px;
+            height: 70px;
+            background-color: var(--primary);
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0;
+            transition: transform 0.3s, background-color 0.3s;
+        }
+        
+        .memory-card.flipped {
+            background-color: var(--secondary);
+            font-size: 32px;
+        }
+        
+        .puzzle-piece {
+            width: 80px;
+            height: 80px;
+            background-color: var(--accent);
+            border: 1px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .quick-tap {
+            width: 60px;
+            height: 60px;
+            background-color: red;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+        }
+
+        .footer-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--secondary);
+            border-top: 2px solid var(--accent);
+            z-index: 900;
+        }
+    </style>
+</head>
+<body class="pb-20">
+    <!-- Wolf background icon -->
+    <div class="wolf-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+            <path fill="currentColor" d="M267.73 471.53l10.56 15.84 5.28-12.32 5.28 7.04 5.28-5.28 5.28 10.56 15.84-15.84-10.56 31.67 21.11 15.84-31.67 5.28V512l-15.84-10.56-15.84 10.56v-15.84l-31.67-5.28 21.11-15.84-10.56-31.67 15.84 15.84 5.28-10.56 5.28 5.28 5.28-7.04 5.28 12.32 10.56-15.84zm73.9-36.9a22.8 22.8 0 0 1 5.72 19.2l-50.06-50.14a55.32 55.32 0 0 1-37.35-4.23l-53.8 26.54a64.07 64.07 0 0 1-28.6 6.28l-24 43.03V512H116.7l18.57-24h-51.61l13.44-27.14 18.54-30.86L99.09 398.4l-18-27.11 48.57-23.25 1.22 26 29.54-5a55.53 55.53 0 0 1 38.29 7.37l50.37-25.78a22.71 22.71 0 0 1 21.77 3.75l20.79 20.78zM245.2 244.81c-7.18 4.15-14.3 6.86-18.31 6.86a11.6 11.6 0 0 1-5.45-1.2c-4.49-2.16-10.93-8.42-13.5-14.5l-1.32-3.12-20.22-47-8.28 8.29-14.8 14.8c-2.81 2.81-24.62 24.61-37.37 37.36-1.49 1.49-4.32 4.31-7.28 7.23-18.45-5.68-40.82-22.64-44.32-27L96 256v-78l16-16-16-16L8.8 177.47a378.81 378.81 0 0 0 51.77 99.79l105 144.7h85.87l98.85-98.85c11.8-13.33 24.63-27.35 33.21-36.11l-48.16-48.16-9.54 8.83-45.6-26.86zm-18.51-117a148.53 148.53 0 0 0 14.77-17.41 41.76 41.76 0 0 0-12.83-7l-21.21-8.88-22.8 8.88a41.76 41.76 0 0 0-12.83 7 148.53 148.53 0 0 0 14.77 17.41 168.83 168.83 0 0 0 40.13 0zm185.88 117.1c7.3-2.39 14.63-7.17 21.94-13.57l-92.25-71.78 3.45-2.3v-14.24l22.67-18.86 8.25-6.89-15.43-10.29-7.31-4.87-42-28-42 28-7.31 4.87-15.41 10.28 8.25 6.89 22.67 18.87v14.24l3.45 2.3-92.25 71.78c7.3 6.4 14.63 11.17 21.94 13.57v-18.46a28.16 28.16 0 0 1 13-23.67l25.1-17.81 19.7-14.53 8.84 5.89 8.84-5.89 19.7 14.53 25.07 17.86a28.12 28.12 0 0 1 12.99 23.66v18.41zm28.91-189.79L415.92 28.24A24.39 24.39 0 0 0 398.83 16h-48.64a24.39 24.39 0 0 0-17.09 12.24L300 72.12 256 56 212 72.12 178.9 28.24A24.39 24.39 0 0 0 161.81 16h-48.64a24.39 24.39 0 0 0-17.09 12.24L72.53 72.12c-16.93 0-33.33 6.61-45.95 18.64L94.91 128H160l16 16 5.41-5.41L208 166.2v16.44l26.15 20.89L275.28 162a148.69 148.69 0 0 0 18.76-22q2.91.16 5.78.42V160h80l16-16h65.07l68.31-37.24c-12.58-12.07-28.98-18.65-45.92-18.65z"/>
+        </svg>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4">
+        <!-- Header -->
+        <header class="py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f43a.svg" alt="Wolf" class="w-10 h-10 mr-2">
+                <h1 class="text-2xl font-bold gold-text">Alpha Wulf</h1>
+            </div>
+            <div class="flex space-x-3">
+                <button id="profileBtn" class="text-xl">
+                    <i class="fas fa-user-circle"></i>
+                </button>
+                <button id="settingsBtn" class="text-xl">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Level Progress Bar -->
+        <div class="my-4">
+            <div class="flex items-center justify-between mb-1">
+                <span>Level: <span id="levelLabel" class="gold-text font-bold">Alpha Pup</span></span>
+                <span><span id="levelPoints">0</span>/<span id="levelMaxPoints">1000</span></span>
+            </div>
+            <div class="progress-bar">
+                <div id="levelProgressBar" class="progress-fill" style="width: 10%;"></div>
+            </div>
+        </div>
+
+        <!-- Pages Container -->
+        <div id="pagesContainer">
+            <!-- Home Page -->
+            <div id="homePage" class="page active-page">
+                <div class="flex flex-col items-center justify-center py-8">
+                    <div class="text-center mb-6">
+                        <h2 class="text-xl mb-2">Tap the coin to earn</h2>
+                        <p class="text-sm text-gray-400">Taps remaining: <span id="tapsRemaining">100</span>/100</p>
+                        <p class="text-sm text-gray-400">Refreshes in: <span id="tapRefreshTime">4:00:00</span></p>
+                    </div>
+                    
+                    <div id="coinTap" class="coin pulse mb-10">
+                        <span>+5</span>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <p class="text-lg">Your balance: <span id="coinBalance" class="gold-text font-bold">0</span> coins</p>
+                    </div>
+                    
+                    <div class="card p-4 mt-6 w-full">
+                        <h3 class="text-lg gold-text mb-3">Daily Bonus</h3>
+                        <p class="text-sm mb-3">Come back tomorrow for an extra bonus!</p>
+                        <button id="dailyBonusBtn" class="task-btn w-full">Claim 50 Coins</button>
+                        <p id="dailyBonusTimer" class="text-xs mt-2 text-center">Available in: 24:00:00</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Earn Page -->
+            <div id="earnPage" class="page">
+                <div class="py-4">
+                    <h2 class="text-xl font-bold gold-text mb-6 text-center">Complete Tasks to Earn</h2>
+                    
+                    <div class="space-y-4">
+                        <!-- Social Media Task Card -->
+                        <div class="card p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fab fa-telegram text-2xl mr-3 gold-text"></i>
+                                <div>
+                                    <h3 class="font-bold">Join Telegram Channel</h3>
+                                    <p class="text-sm text-gray-400">Follow our official channel for updates</p>
+                                </div>
+                            </div>
+                            <button class="task-btn w-full" data-task="telegram">Complete for 50 coins</button>
+                        </div>
+                        
+                        <div class="card p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fab fa-instagram text-2xl mr-3 gold-text"></i>
+                                <div>
+                                    <h3 class="font-bold">Follow on Instagram</h3>
+                                    <p class="text-sm text-gray-400">Follow our official Instagram page</p>
+                                </div>
+                            </div>
+                            <button class="task-btn w-full" data-task="instagram">Complete for 50 coins</button>
+                        </div>
+                        
+                        <div class="card p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fab fa-twitter text-2xl mr-3 gold-text"></i>
+                                <div>
+                                    <h3 class="font-bold">Follow on Twitter</h3>
+                                    <p class="text-sm text-gray-400">Follow and retweet our pinned post</p>
+                                </div>
+                            </div>
+                            <button class="task-btn w-full" data-task="twitter">Complete for 50 coins</button>
+                        </div>
+                        
+                        <div class="card p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fab fa-youtube text-2xl mr-3 gold-text"></i>
+                                <div>
+                                    <h3 class="font-bold">Subscribe on YouTube</h3>
+                                    <p class="text-sm text-gray-400">Subscribe to our YouTube channel</p>
+                                </div>
+                            </div>
+                            <button class="task-btn w-full" data-task="youtube">Complete for 50 coins</button>
+                        </div>
+                        
+                        <div class="card p-4">
+                            <div class="flex items-center mb-3">
+                                <i class="fas fa-share-alt text-2xl mr-3 gold-text"></i>
+                                <div>
+                                    <h3 class="font-bold">Share with Friends</h3>
+                                    <p class="text-sm text-gray-400">Share the app with 3 friends</p>
+                                </div>
+                            </div>
+                            <button class="task-btn w-full" data-task="share">Complete for 50 coins</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Ad Space -->
+                    <div class="mt-6 p-3 bg-gray-800 rounded-lg text-center">
+                        <p class="text-sm text-gray-400 mb-2">Advertisement</p>
+                        <!-- Display Ads Banner -->
+                        <ins class="adsbygoogle"
+                             style="display:block"
+                             data-ad-client="ca-pub-3014995575427702"
+                             data-ad-slot="4318056906"
+                             data-ad-format="auto"
+                             data-full-width-responsive="true"></ins>
+                        <script>
+                             (adsbygoogle = window.adsbygoogle || []).push({});
+                        </script>
+                    </div>
+
+                    <!-- Feed Ads -->
+                    <div class="mt-6 p-3 bg-gray-800 rounded-lg text-center">
+                        <p class="text-sm text-gray-400 mb-2">Recommended for You</p>
+                        <ins class="adsbygoogle"
+                             style="display:block"
+                             data-ad-format="fluid"
+                             data-ad-layout-key="-fb+5w+4e-db+86"
+                             data-ad-client="ca-pub-3014995575427702"
+                             data-ad-slot="5023799767"></ins>
+                        <script>
+                             (adsbygoogle = window.adsbygoogle || []).push({});
+                        </script>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallet Page -->
+            <div id="walletPage" class="page">
+                <div class="py-4">
+                    <h2 class="text-xl font-bold gold-text mb-6 text-center">Your Wallet</h2>
+                    
+                    <div class="card p-6 text-center mb-6">
+                        <div class="mb-4">
+                            <i class="fas fa-coins text-4xl gold-text mb-3"></i>
+                            <h3 class="text-sm text-gray-400">Available Balance</h3>
+                            <p class="text-3xl font-bold gold-text" id="walletBalance">0</p>
+                            <p class="text-sm text-gray-400">1000 coins = 10 INR</p>
+                        </div>
+                        
+                        <div class="border-t border-gray-700 pt-4">
+                            <h3 class="text-lg mb-3">Withdraw Funds</h3>
+                            <div class="mb-4">
+                                <label class="block text-sm text-left mb-1">Amount (min 1000 coins)</label>
+                                <input type="number" id="withdrawAmount" min="1000" step="100" value="1000" 
+                                       class="w-full p-2 bg-gray-800 border border-gray-700 rounded mb-3">
+                                
+                                <label class="block text-sm text-left mb-1">UPI ID</label>
+                                <input type="text" id="upiId" placeholder="yourname@upi" 
+                                       class="w-full p-2 bg-gray-800 border border-gray-700 rounded mb-3">
+                            </div>
+                            
+                            <button id="withdrawBtn" class="withdraw-btn w-full">Withdraw</button>
+                            <p class="text-xs mt-2 text-gray-400">Processing time: 24-48 hours</p>
+                        </div>
+                    </div>
+                    
+                    <div class="card p-4">
+                        <h3 class="font-bold mb-3">Transaction History</h3>
+                        <div id="transactionHistory" class="space-y-2">
+                            <div class="flex justify-between items-center p-2 border-b border-gray-700">
+                                <div>
+                                    <p class="font-semibold">Daily Tapping</p>
+                                    <p class="text-xs text-gray-400">Today, 15:30</p>
+                                </div>
+                                <p class="gold-text">+25 coins</p>
+                            </div>
+                            <div class="flex justify-between items-center p-2 border-b border-gray-700">
+                                <div>
+                                    <p class="font-semibold">Referral Bonus</p>
+                                    <p class="text-xs text-gray-400">Yesterday, 10:15</p>
+                                </div>
+                                <p class="gold-text">+50 coins</p>
+                            </div>
+                            <div class="flex justify-between items-center p-2">
+                                <div>
+                                    <p class="font-semibold">Withdrawal</p>
+                                    <p class="text-xs text-gray-400">3 days ago</p>
+                                </div>
+                                <p class="text-red-400">-1000 coins</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friends Page -->
+            <div id="friendsPage" class="page">
+                <div class="py-4">
+                    <h2 class="text-xl font-bold gold-text mb-6 text-center">Invite Friends</h2>
+                    
+                    <div class="card p-6 text-center mb-6">
+                        <i class="fas fa-user-plus text-3xl gold-text mb-3"></i>
+                        <h3 class="text-lg mb-2">Your Referral Code</h3>
+                        <div class="bg-gray-800 p-3 rounded-lg mb-4 flex justify-between items-center">
+                            <span id="referralCode" class="font-mono">WOLF12345</span>
+                            <button id="copyReferralBtn" class="text-sm px-2 py-1 bg-gray-700 rounded">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                        
+                        <p class="text-sm mb-4">Share your referral link and earn 50 coins for each friend who joins!</p>
+                        
+                        <button id="shareReferralBtn" class="withdraw-btn w-full mb-3">
+                            <i class="fas fa-share-alt mr-2"></i> Share Your Link
+                        </button>
+                        
+                        <p class="text-xs text-gray-400">You've invited <span id="referralCount">3</span> friends</p>
+                    </div>
+                    
+                    <div class="card p-4">
+                        <h3 class="font-bold mb-3">Your Referrals</h3>
+                        <div id="referralsList" class="space-y-3">
+                            <div class="flex items-center justify-between p-2 border-b border-gray-700">
+                                <div class="flex items-center">
+                                    <div class="bg-gray-700 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold">John D.</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Hunter</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs bg-green-800 px-2 py-1 rounded">Active</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-2 border-b border-gray-700">
+                                <div class="flex items-center">
+                                    <div class="bg-gray-700 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold">Sara T.</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Pup</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs bg-green-800 px-2 py-1 rounded">Active</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-2">
+                                <div class="flex items-center">
+                                    <div class="bg-gray-700 w-10 h-10 rounded-full flex items-center justify-center mr-3">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-semibold">Mike R.</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Pup</p>
+                                    </div>
+                                </div>
+                                <p class="text-xs bg-green-800 px-2 py-1 rounded">Active</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Games Page -->
+            <div id="gamesPage" class="page">
+                <div class="py-4">
+                    <h2 class="text-xl font-bold gold-text mb-6 text-center">Games</h2>
+                    
+                    <!-- Tournament Banner -->
+                    <div class="tournament-banner p-4 rounded-lg mb-6 text-center">
+                        <h3 class="text-lg gold-text mb-2">Friday Tournament</h3>
+                        <p class="text-sm mb-3">Join the weekly tournament for a chance to win 10,000 coins!</p>
+                        <div class="flex justify-between items-center mb-2">
+                            <span>Prize Pool:</span>
+                            <span class="gold-text font-bold">10,000 coins</span>
+                        </div>
+                        <div class="flex justify-between items-center mb-3">
+                            <span>Next Tournament:</span>
+                            <span id="tournamentCountdown">2 days, 15 hours</span>
+                        </div>
+                        <button id="tournamentJoinBtn" class="game-btn w-full">Join Tournament (100 coins)</button>
+                    </div>
+                    
+                    <!-- Games Grid -->
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="card">
+                            <div class="p-3">
+                                <h3 class="font-bold text-center mb-2">Memory Match</h3>
+                                <div class="h-28 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                                    <i class="fas fa-brain text-4xl text-gray-600"></i>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2 text-center">Match pairs to win coins</p>
+                                <button class="game-btn w-full" data-game="memory">Play</button>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="p-3">
+                                <h3 class="font-bold text-center mb-2">Quick Tap</h3>
+                                <div class="h-28 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                                    <i class="fas fa-hand-pointer text-4xl text-gray-600"></i>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2 text-center">Tap targets quickly</p>
+                                <button class="game-btn w-full" data-game="quicktap">Play</button>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="p-3">
+                                <h3 class="font-bold text-center mb-2">Number Puzzle</h3>
+                                <div class="h-28 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                                    <i class="fas fa-puzzle-piece text-4xl text-gray-600"></i>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2 text-center">Solve the puzzle</p>
+                                <button class="game-btn w-full" data-game="puzzle">Play</button>
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="p-3">
+                                <h3 class="font-bold text-center mb-2">Wolf Run</h3>
+                                <div class="h-28 bg-gray-800 rounded-lg flex items-center justify-center mb-2">
+                                    <i class="fas fa-running text-4xl text-gray-600"></i>
+                                </div>
+                                <p class="text-xs text-gray-400 mb-2 text-center">Endless runner game</p>
+                                <button class="game-btn w-full" data-game="wolfrun">Play</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Leaderboard -->
+                    <div class="card p-4">
+                        <h3 class="font-bold mb-3">Leaderboard</h3>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between p-2 border-b border-gray-700">
+                                <div class="flex items-center">
+                                    <span class="w-5 mr-3 text-center gold-text">1</span>
+                                    <div>
+                                        <p class="font-semibold">WolfMaster92</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Leader</p>
+                                    </div>
+                                </div>
+                                <p class="gold-text">8,520 pts</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-2 border-b border-gray-700">
+                                <div class="flex items-center">
+                                    <span class="w-5 mr-3 text-center silver-text">2</span>
+                                    <div>
+                                        <p class="font-semibold">GoldHunter</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Hunter</p>
+                                    </div>
+                                </div>
+                                <p class="gold-text">7,345 pts</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-2 border-b border-gray-700">
+                                <div class="flex items-center">
+                                    <span class="w-5 mr-3 text-center bronze-text">3</span>
+                                    <div>
+                                        <p class="font-semibold">NightWolf</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Hunter</p>
+                                    </div>
+                                </div>
+                                <p class="gold-text">6,290 pts</p>
+                            </div>
+                            
+                            <div class="flex items-center justify-between p-2">
+                                <div class="flex items-center">
+                                    <span class="w-5 mr-3 text-center">12</span>
+                                    <div>
+                                        <p class="font-semibold">You</p>
+                                        <p class="text-xs text-gray-400">Level: Alpha Pup</p>
+                                    </div>
+                                </div>
+                                <p class="gold-text">1,230 pts</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Profile Modal -->
+            <div id="profileModal" class="modal">
+                <div class="modal-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold gold-text">Your Profile</h3>
+                        <button class="close-modal text-gray-400">&times;</button>
+                    </div>
+                    <div class="text-center mb-4">
+                        <div class="w-20 h-20 bg-gray-700 rounded-full mx-auto mb-3 flex items-center justify-center">
+                            <i class="fas fa-user text-3xl"></i>
+                        </div>
+                        <h4 class="text-lg font-bold" id="profileName">User12345</h4>
+                        <p class="text-sm text-gray-400">Joined: March 2025</p>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="flex justify-between">
+                            <span>Level:</span>
+                            <span class="gold-text" id="profileLevel">Alpha Pup</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total Coins Earned:</span>
+                            <span class="gold-text" id="profileTotalCoins">1,250</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total Withdrawals:</span>
+                            <span class="gold-text" id="profileWithdrawals">0 INR</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Referrals:</span>
+                            <span class="gold-text" id="profileReferrals">3</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Settings Modal -->
+            <div id="settingsModal" class="modal">
+                <div class="modal-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold gold-text">Settings</h3>
+                        <button class="close-modal text-gray-400">&times;</button>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block mb-2">Notifications</label>
+                            <div class="flex items-center justify-between">
+                                <span>Push Notifications</span>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block mb-2">Sound Effects</label>
+                            <div class="flex items-center justify-between">
+                                <span>Game Sounds</span>
+                                <label class="switch">
+                                    <input type="checkbox" checked>
+                                    <span class="slider round"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block mb-2">Contact Support</label>
+                            <button class="task-btn w-full">Contact Support</button>
+                        </div>
+                        <div>
+                            <label class="block mb-2">About</label>
+                            <div class="text-sm text-gray-400">
+                                <p>Alpha Wulf v1.0.0</p>
+                                <p class="mt-1">© 2025 Alpha Wulf</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Game Modal -->
+            <div id="gameModal" class="modal">
+                <div class="modal-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold gold-text" id="gameModalTitle">Game</h3>
+                        <button class="close-modal text-gray-400">&times;</button>
+                    </div>
+                    
+                    <div id="gameContainer" class="game-area mb-4 p-3 flex items-center justify-center">
+                        <p class="text-center">Game loading...</p>
+                    </div>
+                    
+                    <div id="gameControls" class="mb-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span>Score:</span>
+                            <span class="gold-text" id="gameScore">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>Time:</span>
+                            <span id="gameTime">30s</span>
+                        </div>
+                    </div>
+                    
+                    <button id="startGameBtn" class="game-btn w-full">Start Game</button>
+                </div>
+            </div>
+            
+            <!-- Withdrawal Confirmation Modal -->
+            <div id="withdrawConfirmModal" class="modal">
+                <div class="modal-content">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-bold gold-text">Withdrawal Request</h3>
+                        <button class="close-modal text-gray-400">&times;</button>
+                    </div>
+                    
+                    <div class="mb-4 text-center">
+                        <i class="fas fa-check-circle text-green-500 text-5xl mb-3"></i>
+                        <p>Your withdrawal request has been submitted!</p>
+                        <p class="text-sm text-gray-400 mt-2">Your withdrawal is waiting for approval.</p>
+                        <div class="mt-4 p-3 bg-gray-800 rounded">
+                            <div class="flex justify-between mb-1">
+                                <span>Amount:</span>
+                                <span id="confirmAmount" class="gold-text">1000 coins (10 INR)</span>
+                            </div>
+                            <div class="flex justify-between mb-1">
+                                <span>UPI ID:</span>
+                                <span id="confirmUpi">yourname@upi</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Status:</span>
+                                <span class="text-yellow-500">Pending</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button class="task-btn w-full close-modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer Navigation -->
+    <div class="footer-nav py-2">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between">
+                <button class="nav-btn active py-2 px-4 rounded-lg flex flex-col items-center" data-page="homePage">
+                    <i class="fas fa-home text-xl"></i>
+                    <span class="text-xs mt-1">Home</span>
+                </button>
+                <button class="nav-btn py-2 px-4 rounded-lg flex flex-col items-center" data-page="earnPage">
+                    <i class="fas fa-tasks text-xl"></i>
+                    <span class="text-xs mt-1">Earn</span>
+                </button>
+                <button class="nav-btn py-2 px-4 rounded-lg flex flex-col items-center" data-page="walletPage">
+                    <i class="fas fa-wallet text-xl"></i>
+                    <span class="text-xs mt-1">Wallet</span>
+                </button>
+                <button class="nav-btn py-2 px-4 rounded-lg flex flex-col items-center" data-page="friendsPage">
+                    <i class="fas fa-user-friends text-xl"></i>
+                    <span class="text-xs mt-1">Friends</span>
+                </button>
+                <button class="nav-btn py-2 px-4 rounded-lg flex flex-col items-center" data-page="gamesPage">
+                    <i class="fas fa-gamepad text-xl"></i>
+                    <span class="text-xs mt-1">Games</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Telegram Web App initialization - simulated for this mockup
+            const initTelegramWebApp = () => {
+                console.log("Initializing Telegram WebApp");
+                // In a real app, we would have:
+                // window.Telegram.WebApp.ready();
+            };
+            
+            // Initialize variables
+            let coinBalance = 0;
+            let tapsRemaining = 100;
+            let tapRefreshTime = 14400; // 4 hours in seconds
+            let userLevel = {
+                current: 'Alpha Pup',
+                points: 0,
+                maxPoints: 1000,
+                levels: [
+                    'Alpha Pup',
+                    'Alpha Scout',
+                    'Alpha Hunter',
+                    'Alpha Warrior',
+                    'Alpha Leader'
+                ]
+            };
+            
+            // DOM Elements
+            const coinBalanceEl = document.getElementById('coinBalance');
+            const walletBalanceEl = document.getElementById('walletBalance');
+            const tapsRemainingEl = document.getElementById('tapsRemaining');
+            const tapRefreshTimeEl = document.getElementById('tapRefreshTime');
+            const levelLabelEl = document.getElementById('levelLabel');
+            const levelPointsEl = document.getElementById('levelPoints');
+            const levelMaxPointsEl = document.getElementById('levelMaxPoints');
+            const levelProgressBarEl = document.getElementById('levelProgressBar');
+            const coinTapEl = document.getElementById('coinTap');
+            const withdrawBtn = document.getElementById('withdrawBtn');
+            const profileBtn = document.getElementById('profileBtn');
+            const settingsBtn = document.getElementById('settingsBtn');
+            const navBtns = document.querySelectorAll('.nav-btn');
+            const taskBtns = document.querySelectorAll('.task-btn');
+            const gameBtns = document.querySelectorAll('.game-btn');
+            const closeModalBtns = document.querySelectorAll('.close-modal');
+            
+            // Modals
+            const profileModal = document.getElementById('profileModal');
+            const settingsModal = document.getElementById('settingsModal');
+            const gameModal = document.getElementById('gameModal');
+            const withdrawConfirmModal = document.getElementById('withdrawConfirmModal');
+            
+            // Update UI functions
+            const updateCoinBalance = (amount) => {
+                coinBalance += amount;
+                coinBalanceEl.textContent = coinBalance;
+                walletBalanceEl.textContent = coinBalance;
+                updateLevel(amount);
+            };
+            
+            const updateLevel = (points) => {
+                userLevel.points += points;
+                
+                // Update progress bar
+                const progress = (userLevel.points / userLevel.maxPoints) * 100;
+                levelProgressBarEl.style.width = `${Math.min(progress, 100)}%`;
+                levelPointsEl.textContent = userLevel.points;
+                levelMaxPointsEl.textContent = userLevel.maxPoints;
+                
+                // Check if level up
+                if (userLevel.points >= userLevel.maxPoints) {
+                    const currentLevelIndex = userLevel.levels.indexOf(userLevel.current);
+                    if (currentLevelIndex < userLevel.levels.length - 1) {
+                        userLevel.current = userLevel.levels[currentLevelIndex + 1];
+                        userLevel.points = userLevel.points - userLevel.maxPoints;
+                        userLevel.maxPoints = userLevel.maxPoints * 1.5;
+                        
+                        // Show level up notification
+                        alert(`Congratulations! You've reached ${userLevel.current} level!`);
+                    }
+                }
+                
+                // Update UI
+                levelLabelEl.textContent = userLevel.current;
+                document.getElementById('profileLevel').textContent = userLevel.current;
+                document.getElementById('profileTotalCoins').textContent = coinBalance;
+            };
+            
+            const formatTime = (seconds) => {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                const secs = seconds % 60;
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            };
+            
+            const updateTapTimer = () => {
+                if (tapRefreshTime > 0) {
+                    tapRefreshTime--;
+                    tapRefreshTimeEl.textContent = formatTime(tapRefreshTime);
+                } else {
+                    // Reset taps
+                    tapsRemaining = 100;
+                    tapsRemainingEl.textContent = tapsRemaining;
+                    tapRefreshTime = 14400; // 4 hours
+                }
+            };
+            
+            // Initialize UI
+            const initUI = () => {
+                coinBalanceEl.textContent = coinBalance;
+                walletBalanceEl.textContent = coinBalance;
+                tapsRemainingEl.textContent = tapsRemaining;
+                tapRefreshTimeEl.textContent = formatTime(tapRefreshTime);
+                levelLabelEl.textContent = userLevel.current;
+                levelPointsEl.textContent = userLevel.points;
+                levelMaxPointsEl.textContent = userLevel.maxPoints;
+                
+                // Start timer
+                setInterval(updateTapTimer, 1000);
+            };
+            
+            // Navigation
+            navBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const pageId = btn.getAttribute('data-page');
+                    
+                    // Hide all pages
+                    document.querySelectorAll('.page').forEach(page => {
+                        page.classList.remove('active-page');
+                    });
+                    
+                    // Show selected page
+                    document.getElementById(pageId).classList.add('active-page');
+                    
+                    // Update active button
+                    navBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                });
+            });
+            
+            // Coin Tap Functionality
+            coinTapEl.addEventListener('click', () => {
+                if (tapsRemaining > 0) {
+                    // Animate coin
+                    coinTapEl.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        coinTapEl.style.transform = 'scale(1)';
+                    }, 100);
+                    
+                    // Update taps and coins
+                    tapsRemaining--;
+                    tapsRemainingEl.textContent = tapsRemaining;
+                    updateCoinBalance(5);
+                    
+                    // Add floating +5 animation
+                    const floatingText = document.createElement('div');
+                    floatingText.textContent = '+5';
+                    floatingText.style.position = 'absolute';
+                    floatingText.style.color = 'var(--primary)';
+                    floatingText.style.fontWeight = 'bold';
+                    floatingText.style.zIndex = '10';
+                    
+                    const coinRect = coinTapEl.getBoundingClientRect();
+                    floatingText.style.left = `${coinRect.left + coinRect.width/2}px`;
+                    floatingText.style.top = `${coinRect.top}px`;
+                    
+                    document.body.appendChild(floatingText);
+                    
+                    // Animate and remove
+                    let pos = coinRect.top;
+                    const animate = () => {
+                        pos -= 2;
+                        floatingText.style.top = `${pos}px`;
+                        floatingText.style.opacity = (coinRect.top - pos) > 50 ? '0' : '1';
+                        
+                        if (pos > coinRect.top - 60) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            document.body.removeChild(floatingText);
+                        }
+                    };
+                    
+                    animate();
+                } else {
+                    alert('No taps remaining! Please wait for refresh.');
+                }
+            });
+            
+            // Task Buttons
+            taskBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const task = btn.getAttribute('data-task');
+                    if (task) {
+                        // Simulate task completion
+                        btn.textContent = 'Completed';
+                        btn.classList.add('disabled');
+                        btn.disabled = true;
+                        
+                        // Add coins
+                        updateCoinBalance(50);
+                        
+                        // Show confirmation
+                        alert('Task completed! You earned 50 coins.');
+                    } else {
+                        // Handle daily bonus
+                        if (btn.id === 'dailyBonusBtn') {
+                            btn.textContent = 'Claimed';
+                            btn.classList.add('disabled');
+                            btn.disabled = true;
+                            document.getElementById('dailyBonusTimer').textContent = 'Available tomorrow';
+                            
+                            // Add coins
+                            updateCoinBalance(50);
+                            
+                            // Show confirmation
+                            alert('Daily bonus claimed! You earned 50 coins.');
+                        }
+                    }
+                });
+            });
+            
+            // Game Buttons
+            gameBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const game = btn.getAttribute('data-game');
+                    if (game) {
+                        // Open game modal
+                        gameModal.style.display = 'block';
+                        document.getElementById('gameModalTitle').textContent = btn.parentElement.querySelector('h3').textContent;
+                        document.getElementById('gameContainer').innerHTML = '<p>Loading game...</p>';
+                        document.getElementById('gameScore').textContent = '0';
+                        document.getElementById('gameTime').textContent = '30s';
+                        
+                        // Initialize game based on type
+                        initGame(game);
+                    } else if (btn.id === 'tournamentJoinBtn') {
+                        if (coinBalance >= 100) {
+                            updateCoinBalance(-100);
+                            alert('You\'ve joined the tournament! Good luck!');
+                            btn.textContent = 'Joined';
+                            btn.classList.add('disabled');
+                            btn.disabled = true;
+                        } else {
+                            alert('Not enough coins! You need 100 coins to join the tournament.');
+                        }
+                    }
+                });
+            });
+            
+            // Game logic
+            const initGame = (gameType) => {
+                const gameContainer = document.getElementById('gameContainer');
+                const startGameBtn = document.getElementById('startGameBtn');
+                const gameScore = document.getElementById('gameScore');
+                const gameTime = document.getElementById('gameTime');
+                let score = 0;
+                let timeLeft = 30;
+                let gameTimer;
+                
+                // Reset game
+                gameContainer.innerHTML = '';
+                startGameBtn.textContent = 'Start Game';
+                startGameBtn.disabled = false;
+                gameScore.textContent = '0';
+                gameTime.textContent = '30s';
+                
+                // Start game button
+                startGameBtn.onclick = () => {
+                    score = 0;
+                    timeLeft = 30;
+                    gameScore.textContent = score;
+                    gameTime.textContent = `${timeLeft}s`;
+                    startGameBtn.textContent = 'Playing...';
+                    startGameBtn.disabled = true;
+                    
+                    // Start timer
+                    gameTimer = setInterval(() => {
+                        timeLeft--;
+                        gameTime.textContent = `${timeLeft}s`;
+                        
+                        if (timeLeft <= 0) {
+                            clearInterval(gameTimer);
+                            endGame(score, gameType);
+                        }
+                    }, 1000);
+                    
+                    // Initialize specific game
+                    switch(gameType) {
+                        case 'memory':
+                            initMemoryGame(gameContainer, score, updateScore);
+                            break;
+                        case 'quicktap':
+                            initQuickTapGame(gameContainer, score, updateScore);
+                            break;
+                        case 'puzzle':
+                            initPuzzleGame(gameContainer, score, updateScore);
+                            break;
+                        case 'wolfrun':
+                            initWolfRunGame(gameContainer, score, updateScore);
+                            break;
+                    }
+                };
+                
+                // Update score function
+                function updateScore(points) {
+                    score += points;
+                    gameScore.textContent = score;
+                }
+                
+                // End game function
+                function endGame(finalScore, gameType) {
+                    clearInterval(gameTimer);
+                    
+                    // Calculate coins earned (10-50 based on score)
+                    let coinsEarned = Math.min(50, Math.max(10, Math.floor(finalScore / 10)));
+                    
+                    // Show game over message
+                    gameContainer.innerHTML = `
+                        <div class="text-center">
+                            <h3 class="text-xl gold-text mb-3">Game Over!</h3>
+                            <p class="mb-2">Your score: ${finalScore}</p>
+                            <p class="gold-text font-bold mb-4">You earned ${coinsEarned} coins!</p>
+                        </div>
+                    `;
+                    
+                    // Update coins
+                    updateCoinBalance(coinsEarned);
+                    
+                    // Reset button
+                    startGameBtn.textContent = 'Play Again';
+                    startGameBtn.disabled = false;
+                }
+            };
+            
+            // Individual game implementations (simplified for this demo)
+            function initMemoryGame(container, score, updateScore) {
+                container.innerHTML = `
+                    <div class="grid grid-cols-4 gap-2">
+                        ${Array(16).fill(0).map((_, i) => `
+                            <div class="memory-card" data-id="${Math.floor(i/2)}"></div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                const cards = container.querySelectorAll('.memory-card');
+                let flippedCards = [];
+                let matchedPairs = 0;
+                
+                // Shuffle cards
+                const cardIds = Array(8).fill(0).map((_, i) => i);
+                const shuffledIds = [...cardIds, ...cardIds].sort(() => Math.random() - 0.5);
+                
+                cards.forEach((card, index) => {
+                    card.dataset.id = shuffledIds[index];
+                    card.onclick = () => {
+                        if (flippedCards.length < 2 && !card.classList.contains('flipped') && !card.classList.contains('matched')) {
+                            // Flip card
+                            card.classList.add('flipped');
+                            card.innerHTML = card.dataset.id;
+                            flippedCards.push(card);
+                            
+                            // Check for match
+                            if (flippedCards.length === 2) {
+                                if (flippedCards[0].dataset.id === flippedCards[1].dataset.id) {
+                                    // Match found
+                                    flippedCards.forEach(c => c.classList.add('matched'));
+                                    flippedCards = [];
+                                    matchedPairs++;
+                                    updateScore(10);
+                                    
+                                    // Check if all pairs matched
+                                    if (matchedPairs === 8) {
+                                        updateScore(50);  // Bonus for completing
+                                    }
+                                } else {
+                                    // No match
+                                    setTimeout(() => {
+                                        flippedCards.forEach(c => c.classList.remove('flipped'));
+                                        flippedCards.forEach(c => c.innerHTML = '');
+                                        flippedCards = [];
+                                    }, 1000);
+                                }
+                            }
+                        }
+                    };
+                });
+            }
+            
+            function initQuickTapGame(container, score, updateScore) {
+                container.style.position = 'relative';
+                container.style.height = '300px';
+                container.innerHTML = '<p class="text-center">Tap the circles as they appear!</p>';
+                
+                // Spawn targets
+                const spawnTarget = () => {
+                    const target = document.createElement('div');
+                    target.className = 'quick-tap';
+                    
+                    // Random position
+                    const left = Math.random() * (container.offsetWidth - 60);
+                    const top = Math.random() * (container.offsetHeight - 60);
+                    target.style.left = `${left}px`;
+                    target.style.top = `${top}px`;
+                    
+                    container.appendChild(target);
+                    
+                    // Auto-remove after 2 seconds
+                    setTimeout(() => {
+                        if (target.parentNode === container) {
+                            container.removeChild(target);
+                        }
+                    }, 2000);
+                    
+                    // Click handler
+                    target.onclick = () => {
+                        container.removeChild(target);
+                        updateScore(5);
+                        spawnTarget();
+                    };
+                };
+                
+                // Start spawning
+                spawnTarget();
+                const spawnInterval = setInterval(spawnTarget, 2000);
+                
+                // Cleanup on game end
+                setTimeout(() => {
+                    clearInterval(spawnInterval);
+                }, 30000);
+            }
+            
+            function initPuzzleGame(container, score, updateScore) {
+                container.innerHTML = `
+                    <div class="grid grid-cols-3 gap-1">
+                        ${Array(9).fill(0).map((_, i) => `
+                            <div class="puzzle-piece" data-pos="${i}" data-val="${i === 8 ? '' : i+1}">
+                                ${i === 8 ? '' : i+1}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                const pieces = container.querySelectorAll('.puzzle-piece');
+                let emptyPos = 8;
+                
+                // Shuffle puzzle
+                for (let i = 0; i < 50; i++) {
+                    const adjacentPositions = getAdjacentPositions(emptyPos);
+                    const randomPos = adjacentPositions[Math.floor(Math.random() * adjacentPositions.length)];
+                    
+                    // Swap
+                    const pieceToMove = Array.from(pieces).find(p => parseInt(p.dataset.pos) === randomPos);
+                    pieceToMove.dataset.pos = emptyPos;
+                    emptyPos = randomPos;
+                }
+                
+                // Update visual positions
+                updatePiecePositions();
+                
+                // Click handler
+                pieces.forEach(piece => {
+                    piece.onclick = () => {
+                        const pos = parseInt(piece.dataset.pos);
+                        if (isAdjacent(pos, emptyPos)) {
+                            // Swap with empty
+                            piece.dataset.pos = emptyPos;
+                            emptyPos = pos;
+                            updatePiecePositions();
+                            
+                            // Check if solved
+                            if (isSolved()) {
+                                updateScore(50);
+                            } else {
+                                updateScore(1);
+                            }
+                        }
+                    };
+                });
+                
+                function getAdjacentPositions(pos) {
+                    const adjacent = [];
+                    if (pos % 3 > 0) adjacent.push(pos - 1);  // Left
+                    if (pos % 3 < 2) adjacent.push(pos + 1);  // Right
+                    if (pos >= 3) adjacent.push(pos - 3);     // Up
+                    if (pos < 6) adjacent.push(pos + 3);      // Down
+                    return adjacent;
+                }
+                
+                function isAdjacent(pos1, pos2) {
+                    return getAdjacentPositions(pos1).includes(pos2);
+                }
+                
+                function updatePiecePositions() {
+                    pieces.forEach(piece => {
+                        const pos = parseInt(piece.dataset.pos);
+                        const row = Math.floor(pos / 3);
+                        const col = pos % 3;
+                        piece.style.gridRow = row + 1;
+                        piece.style.gridColumn = col + 1;
+                    });
+                }
+                
+                function isSolved() {
+                    return Array.from(pieces).every(piece => {
+                        const pos = parseInt(piece.dataset.pos);
+                        const val = piece.dataset.val;
+                        return val === '' || parseInt(val) === pos + 1;
+                    });
+                }
+            }
+            
+            function initWolfRunGame(container, score, updateScore) {
+                container.style.position = 'relative';
+                container.style.height = '200px';
+                container.style.overflow = 'hidden';
+                
+                // Create wolf
+                const wolf = document.createElement('div');
+                wolf.style.position = 'absolute';
+                wolf.style.bottom = '0px';
+                wolf.style.left = '50px';
+                wolf.style.width = '30px';
+                wolf.style.height = '50px';
+                wolf.style.backgroundColor = 'gray';
+                wolf.style.borderRadius = '5px';
+                container.appendChild(wolf);
+                
+                // Create ground
+                const ground = document.createElement('div');
+                ground.style.position = 'absolute';
+                ground.style.bottom = '0px';
+                ground.style.left = '0px';
+                ground.style.width = '100%';
+                ground.style.height = '20px';
+                ground.style.backgroundColor = '#333';
+                container.appendChild(ground);
+                
+                // Wolf state
+                let isJumping = false;
+                let position = 0;
+                let gameSpeed = 5;
+                let obstacles = [];
+                
+                // Jump function
+                function jump() {
+                    if (!isJumping) {
+                        isJumping = true;
+                        let upInterval = setInterval(() => {
+                            if (position >= 100) {
+                                clearInterval(upInterval);
+                                let downInterval = setInterval(() => {
+                                    if (position <= 0) {
+                                        clearInterval(downInterval);
+                                        isJumping = false;
+                                    } else {
+                                        position -= 3;
+                                        wolf.style.bottom = position + 'px';
+                                    }
+                                }, 20);
+                            } else {
+                                position += 3;
+                                wolf.style.bottom = position + 'px';
+                            }
+                        }, 20);
+                    }
+                }
+                
+                // Create obstacle
+                function createObstacle() {
+                    const obstacle = document.createElement('div');
+                    obstacle.classList.add('obstacle');
+                    obstacle.style.position = 'absolute';
+                    obstacle.style.bottom = '20px';
+                    obstacle.style.left = container.offsetWidth + 'px';
+                    obstacle.style.width = '20px';
+                    obstacle.style.height = '30px';
+                    obstacle.style.backgroundColor = 'red';
+                    container.appendChild(obstacle);
+                    obstacles.push({
+                        element: obstacle,
+                        position: container.offsetWidth
+                    });
+                }
+                
+                // Move obstacles
+                function moveObstacles() {
+                    obstacles.forEach((obstacle, index) => {
+                        obstacle.position -= gameSpeed;
+                        obstacle.element.style.left = obstacle.position + 'px';
+                        
+                        // Check collision
+                        if (obstacle.position > 50 && obstacle.position < 80 && position < 30) {
+                            // Collision detected
+                            gameOver();
+                        }
+                        
+                        // Remove off-screen obstacles
+                        if (obstacle.position < -20) {
+                            obstacle.element.remove();
+                            obstacles.splice(index, 1);
+                            updateScore(5);  // Score for passing obstacle
+                        }
+                    });
+                }
+                
+                // Game over
+                function gameOver() {
+                    obstacles.forEach(obstacle => obstacle.element.remove());
+                    obstacles = [];
+                    position = 0;
+                    wolf.style.bottom = position + 'px';
+                }
+                
+                // Event listeners
+                container.addEventListener('click', jump);
+                
+                // Game loop
+                const obstacleInterval = setInterval(createObstacle, 2000);
+                const gameLoop = setInterval(moveObstacles, 20);
+                
+                // Cleanup
+                setTimeout(() => {
+                    clearInterval(obstacleInterval);
+                    clearInterval(gameLoop);
+                    container.removeEventListener('click', jump);
+                }, 30000);
+            }
+            
+            // Withdrawal functionality
+            withdrawBtn.addEventListener('click', () => {
+                const amount = parseInt(document.getElementById('withdrawAmount').value);
+                const upiId = document.getElementById('upiId').value;
+                
+                if (amount < 1000) {
+                    alert('Minimum withdrawal amount is 1000 coins');
+                    return;
+                }
+                
+                if (!upiId || !upiId.includes('@')) {
+                    alert('Please enter a valid UPI ID');
+                    return;
+                }
+                
+                if (coinBalance < amount) {
+                    alert('Not enough coins in your balance');
+                    return;
+                }
+                
+                // Process withdrawal
+                updateCoinBalance(-amount);
+                
+                // Set confirmation details
+                document.getElementById('confirmAmount').textContent = `${amount} coins (${amount/100} INR)`;
+                document.getElementById('confirmUpi').textContent = upiId;
+                
+                // Show confirmation
+                withdrawConfirmModal.style.display = 'block';
+            });
+            
+            // Modal functionality
+            profileBtn.addEventListener('click', () => {
+                profileModal.style.display = 'block';
+            });
+            
+            settingsBtn.addEventListener('click', () => {
+                settingsModal.style.display = 'block';
+            });
+            
+            closeModalBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const modal = btn.closest('.modal');
+                    modal.style.display = 'none';
+                });
+            });
+            
+            // Close modal when clicking outside
+            window.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    e.target.style.display = 'none';
+                }
+            });
+            
+            // Initialize app
+            initTelegramWebApp();
+            initUI();
+        });
+    </script>
+</body>
+</html>
