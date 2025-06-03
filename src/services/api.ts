@@ -4,7 +4,6 @@ import { securityService } from './security';
 import { socketService } from './socket';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://server-d421.onrender.com';
-const TELEGRAM_BOT_TOKEN = '8098670589:AAGYfKbo_i_TLdlPjpJ7vxZvouWmIsy0B0U';
 
 interface LoginResponse {
   user: {
@@ -31,7 +30,6 @@ export const api: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-    'X-Telegram-Bot-Token': TELEGRAM_BOT_TOKEN,
   },
 });
 
@@ -64,7 +62,10 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: async (initData: string): Promise<AxiosResponse<LoginResponse>> => {
-    return api.post('/auth/login', { initData });
+    // Send initData in the request header as expected by the backend middleware
+    return api.post("/api/auth/telegram", {}, { 
+      headers: { "X-Telegram-Init-Data": initData }
+    });
   },
 
   me: async (): Promise<AxiosResponse<MeResponse>> => {
